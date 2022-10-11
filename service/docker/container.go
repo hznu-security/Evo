@@ -9,7 +9,6 @@ package docker
 import (
 	"Evo/auth"
 	"context"
-	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -60,19 +59,19 @@ func SetContainerSSH(container, user, pwd string) error {
 		AttachStdout: true,
 		Cmd:          []string{"passwd"},
 	})
-
-	res, _ := cli.ContainerExecAttach(ctx, id.ID, types.ExecStartCheck{})
+	attach, _ := cli.ContainerExecAttach(ctx, id.ID, types.ExecStartCheck{})
 	err = cli.ContainerExecStart(ctx, id.ID, types.ExecStartCheck{
 		Tty: true,
 	})
+	defer attach.Close()
 	if err != nil {
 		return err
 	}
-	if _, err = res.Conn.Write([]byte(pwd + "\n")); err != nil {
+	if _, err = attach.Conn.Write([]byte(pwd + "\n")); err != nil {
 		return err
 	}
 
-	if _, err = res.Conn.Write([]byte(pwd + "\n")); err != nil {
+	if _, err = attach.Conn.Write([]byte(pwd + "\n")); err != nil {
 		return err
 	}
 	return nil
@@ -118,33 +117,27 @@ func ResetContainer(name string) (pwd string, err error) {
 }
 
 // ContainerExec 通过exec在容器中执行命令
-func ContainerExec(container string, command string) ([]byte, error) {
+func ContainerExec(container string, command string) (types.ContainerExecInspect, error) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts()
 	if err != nil {
-		return nil, err
+		return types.ContainerExecInspect{}, err
 	}
-	cmd := strings.Split(command, " ")
+	//cmd := strings.Split(command, " ")
 	id, _ := cli.ContainerExecCreate(ctx, container, types.ExecConfig{
 		AttachStderr: true,
 		AttachStdout: true,
 		AttachStdin:  true,
-		Cmd:          cmd,
+		Cmd:          []string{command},
 	})
 	attach, err := cli.ContainerExecAttach(ctx, id.ID, types.ExecStartCheck{})
 	if err != nil {
-		return nil, err
+		return types.ContainerExecInspect{}, err
 	}
+	defer attach.Close()
 	err = cli.ContainerExecStart(ctx, id.ID, types.ExecStartCheck{
 		Tty: true,
 	})
-	if err != nil {
-		return nil, err
-	}
-	res := make([]byte, 0)
-	_, err = attach.Conn.Read(res)
-	if err != nil {
-		return nil,err
-	}
-	return	res, nil
+	inspect, err := cli.ContainerExecInspect(ctx, id.ID)
+	return inspect, nil
 }

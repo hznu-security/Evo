@@ -8,6 +8,7 @@ package ctrl
 
 import (
 	"encoding/json"
+
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
@@ -59,4 +60,19 @@ func GetConfig(c *gin.Context) {
 	Success(c, "success", gin.H{
 		"configs": configs,
 	})
+}
+
+// ResetConfig 重置平台  感觉没啥好写的
+func ResetConfig(c *gin.Context) {
+
+}
+
+// StartGame 开启比赛，加入计时任务
+func StartGame(c *gin.Context) {
+	
+}
+
+// TerminateGame 终止比赛，移除计时任务
+func TerminateGame(c *gin.Context) {
+
 }

@@ -7,6 +7,7 @@ package docker
 
 import (
 	"bytes"
+	"log"
 	"testing"
 	"time"
 
@@ -83,11 +84,10 @@ func TestResetContainer(t *testing.T) {
 
 func TestContainerExec(t *testing.T) {
 	cmd := "whoami"
-	container:= "7ad5f1f1a149"
-	res,err := ContainerExec(container,cmd)
+	container := "63df91046726"
+	inspect, err := ContainerExec(container, cmd)
 	if err != nil {
-		t.Log(err)
-		return
+		t.Fatal(err)
 	}
-	t.Log(string(res))
+	log.Println(inspect)
 }
