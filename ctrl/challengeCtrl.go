@@ -41,7 +41,7 @@ func PostChallenge(c *gin.Context) {
 	challenge.Score = form.Score
 	challenge.AutoRefresh = form.AutoRefresh
 	challenge.Command = form.Command
-	challenge.Type = form.Type
+	//challenge.Type = form.Type
 
 	err = db.DB.Create(&challenge).Error
 	if err != nil {
@@ -99,7 +99,7 @@ type putChallengeForm struct {
 	Score       float64 `binding:"required"`
 	AutoRefresh bool    `binding:"required"`
 	Command     string	`binding:"max=255"`
-	Type        int `binding:"required"`
+	//Type        int `binding:"required"`
 }
 
 func PutChallenge(c *gin.Context) {
@@ -127,7 +127,7 @@ func PutChallenge(c *gin.Context) {
 	challenge.Command = form.Command
 	challenge.AutoRefresh = form.AutoRefresh
 	challenge.Desc = form.Desc
-	challenge.Type = form.Type
+	//challenge.Type = form.Type
 
 	db.DB.Save(&challenge)
 	log.Println("修改题目:", challenge.Title)

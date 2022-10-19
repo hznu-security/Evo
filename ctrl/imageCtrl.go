@@ -20,7 +20,6 @@ func PostImage(c *gin.Context) {
 	// 解析表单
 	file, err := c.FormFile("image")
 	if err != nil {
-		log.Println(err.Error())
 		Fail(c, "上传失败", nil)
 		return
 	}

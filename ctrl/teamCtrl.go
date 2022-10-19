@@ -8,14 +8,18 @@ package ctrl
 
 import (
 	"Evo/auth"
+	"Evo/config"
 	"Evo/db"
 	"Evo/model"
+	"Evo/util"
 	"errors"
-	"log"
-	"strconv"
-
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"gorm.io/gorm"
+	"log"
+	"path/filepath"
+	"sort"
+	"strconv"
 )
 
 // TeamLogin 队伍登陆
@@ -50,27 +54,111 @@ func TeamLogin(c *gin.Context) {
 	}
 	Success(c, "登陆成功", gin.H{
 		"token": token,
+		"id":    team.ID,
 	})
 }
 
-// SubmitFlag 提交flag
-func SubmitFlag(c *gin.Context) {
+type flagFrom struct {
+	flag string `binding:"required,max=255"`
+}
 
+// SubmitFlag 提交flag   需要解决flag重复提交问题
+func SubmitFlag(c *gin.Context) {
+	var form flagFrom
+	err := c.ShouldBind(&form)
+	if err != nil {
+		Fail(c, "提交失败", nil)
+	}
+	teamId, isExist := c.Get("teamId") // 获取鉴权中间件放进去的teamId
+	if !isExist {
+		Fail(c, "队伍不存在", nil)
+		return
+	}
+
+	var flag model.Flag
+	db.DB.Where("round = ? AND flag = ", config.ROUND_NOW, form.flag).First(&flag)
+	// flag不正确,返回
+	if flag.ID == 0 {
+		Success(c, "flag不正确", nil)
+		return
+	}
+
+	if flag.TeamId == teamId || flag.Round != config.ROUND_NOW {
+
+	}
+
+	// flag正确,判断是否提交过了
+	var attack model.Attack
+	attacker := teamId.(uint)
+	db.DB.Where("attacker = ? AND round = ? AND box_id = ?", attacker, config.ROUND_NOW, flag.BoxId).First(&attack)
+	if attack.ID != 0 {
+		Success(c, "重复提交", nil)
+		return
+	}
+
+	// flag正确
+	var box model.Box
+	db.DB.Where("id = ?", flag.BoxId).First(&box)
+	if box.IsAttacked { // box已经被攻击过了
+
+	}
+	// box 没有被攻击过
+	box.IsAttacked = true
+	box.Score -= float64(config.ATTACK_SCORE)
+	db.DB.Save(&box) // 更新靶机状态
+
+	/**
+	这里空一段，给大屏发消息的代码
+	*/
+
+	attack.Attacker = attacker
+	attack.Round = config.ROUND_NOW
+	attack.BoxId = box.ID
+	attack.ChallengeId = flag.ChallengeID
+	attack.TeamID = flag.TeamId // 被攻击者
+
+	db.DB.Create(&attack)
+}
+
+type info struct {
+	team  model.Team
+	round uint
 }
 
 // Info 获取信息
 func Info(c *gin.Context) {
-
+	teamId := c.Query("teamId")
+	var teamInfo model.Team
+	db.DB.Where("id = ?", teamId).Select([]string{"name", "logo", "score"}).First(&teamInfo)
+	res := info{
+		team:  teamInfo,
+		round: config.ROUND_NOW,
+	}
+	Success(c, "success", gin.H{
+		"info": res,
+	})
 }
 
 // GetRank 获取排名
 func GetRank(c *gin.Context) {
-
+	var team []model.Team
+	db.DB.Select([]string{"id", "name", "logo", "score"}).Find(&team)
+	// 根据分数排序后返回
+	sort.Slice(team, func(i, j int) bool {
+		return team[i].Score > team[j].Score
+	})
+	Success(c, "success", gin.H{
+		"rank": team,
+	})
 }
 
 // GetNotification 获取公告
 func GetNotification(c *gin.Context) {
-
+	var notifications []model.Notification
+	db.DB.Find(&notifications)
+	Success(c, "success", gin.H{
+		"notifications": notifications,
+	})
 }
 
 // PostTeam 添加队伍
@@ -180,6 +268,7 @@ func DelTeam(c *gin.Context) {
 		}
 		return
 	}
+	log.Printf("删除队伍 %s", team.Name)
 	Success(c, "删除成功", nil)
 }
 
@@ -207,6 +296,7 @@ func ResetPwd(c *gin.Context) {
 	}
 	team.Pwd = auth.NewPwd()
 	db.DB.Save(&team)
+	log.Printf("队伍 %s 重置密码", team.Name)
 	Success(c, "重置成功", gin.H{
 		"pwd": team.Pwd,
 	})
@@ -214,5 +304,32 @@ func ResetPwd(c *gin.Context) {
 
 // UploadLogo 上传队伍logo
 func UploadLogo(c *gin.Context) {
-
+	teamId := c.PostForm("teamId")
+	if teamId == "" {
+		Fail(c, "缺少队伍id", nil)
+		return
+	}
+	logo, err := c.FormFile("logo")
+	if err != nil {
+		Fail(c, "上传失败", nil)
+		return
+	}
+	ext := filepath.Ext(logo.Filename)
+	if ext != ".png" && ext != ".jpg" {
+		Fail(c, "图片格式不正确", nil)
+		return
+	}
+	_, err = strconv.Atoi(teamId)
+	if err != nil {
+		Fail(c, "参数异常", nil)
+		return
+	}
+	logoPath := viper.GetString("image.path")
+	dst := util.GetRandomStr(10, logoPath, ext)
+	err = c.SaveUploadedFile(logo, dst)
+	if err != nil {
+		Error(c, "上传失败", nil)
+		return
+	}
+	Success(c, "success", nil)
 }

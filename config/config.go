@@ -44,7 +44,13 @@ var START_TIME string
 var END_TIME string
 
 // ROUND_NOW 当前比赛的轮次
-var ROUND_NOW uint
+var ROUND_NOW uint = 1
+
+// DOWN_SCORE checkdown 扣分
+var DOWN_SCORE uint
+
+// ATTACK_SCORE 被攻击扣分
+var ATTACK_SCORE uint
 
 //InitConfig 初始化配置
 func InitConfig() {
@@ -63,6 +69,8 @@ func InitConfig() {
 	BOX_VISIBLE = viper.GetBool("game.boxvisible")
 	START_TIME = viper.GetString("game.starttime")
 	END_TIME = viper.GetString("game.endtime")
+	DOWN_SCORE = viper.GetUint("game.downscore")
+	ATTACK_SCORE = viper.GetUint("game.attackscore")
 	start, err := time.ParseInLocation(TIME_FORMAT, START_TIME, time.Local)
 	if err != nil {
 		panic("加载比赛时间失败")

@@ -28,7 +28,7 @@ type Claims struct {
 
 func ReleaseToken(id uint, role uint8) (string, error) {
 	validity := viper.GetDuration("auth.vilidity")
-	expirationTime := time.Now().Add(validity * time.Hour)
+	expirationTime := time.Now().Add(validity * time.Minute)
 	if role != TEAM && role != ADMIN {
 		return "", errors.New("角色类型不正确")
 	}

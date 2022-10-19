@@ -55,3 +55,4 @@ func AuthMW() gin.HandlerFunc {
 		c.Next()
 	}
 }
+

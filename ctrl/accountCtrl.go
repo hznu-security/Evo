@@ -142,5 +142,4 @@ func GetAccount(c *gin.Context) {
 	Success(c, "success", gin.H{
 		"admins": admins,
 	})
-
 }

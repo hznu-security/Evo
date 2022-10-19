@@ -10,9 +10,7 @@ import (
 	"Evo/config"
 	"Evo/db"
 	"Evo/model"
-	"math/rand"
-	"strings"
-	"time"
+	"Evo/util"
 )
 
 // GenerateFlag 生成flag
@@ -27,7 +25,7 @@ func GenerateFlag() error {
 			flags[i].ChallengeID = box.ChallengeID
 			flags[i].Round = uint(i + 1)
 			flags[i].TeamId = box.TeamId
-			flags[i].Flag = generateFlag(config.FLAG_PRE, config.FLAG_SUF)
+			flags[i].Flag = util.GetRandomStr(15, config.FLAG_PRE, config.FLAG_SUF)
 		}
 		err := db.DB.Create(&flags).Error
 		if err != nil {
@@ -36,37 +34,6 @@ func GenerateFlag() error {
 	}
 	return nil
 }
-
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-const (
-	letterIdxBits = 6                    // 6 bits to represent a letter index
-	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
-	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
-)
-
-var src = rand.NewSource(time.Now().UnixNano()) // 使用自己的source，不考虑并发安全，性能提升
-
-func generateFlag(prefix, suffix string) string {
-	n := 15 + len(prefix) + len(suffix)
-	sb := strings.Builder{} // stringbuilder，提高拼接字符串的效率
-	sb.Grow(n)
-	sb.WriteString(prefix)
-	// 掩码，多次利用，提高性能。
-	for i, cache, remain := n-1, src.Int63(), letterIdxMax; i >= 0; {
-		if remain == 0 {
-			cache, remain = src.Int63(), letterIdxMax
-		}
-		if idx := int(cache & letterIdxMask); idx < len(letterBytes) {
-			sb.WriteByte(letterBytes[idx])
-			i--
-		}
-		cache >>= letterIdxBits
-		remain--
-	}
-	sb.WriteString(suffix)
-	return sb.String()
-}
-
 func RefreshFlag() {
 	/**
 	为每一台靶机更新flag

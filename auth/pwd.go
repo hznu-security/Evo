@@ -7,15 +7,10 @@
 package auth
 
 import (
-	"log"
-	"math/rand"
-	"time"
-
+	"Evo/util"
 	"golang.org/x/crypto/bcrypt"
+	"log"
 )
-
-// 用来生成随机密码的
-var letters = []byte("12345asdfghjklzxc") //17个
 
 // Encode 对密码进行编码
 func Encode(pwd string) string {
@@ -34,10 +29,5 @@ func Cmp(epwd string, pwd string) bool {
 
 // NewPwd 生成队伍密码
 func NewPwd() string {
-	result := make([]byte, 8)
-	rand.Seed(time.Now().Unix())
-	for i := 0; i < 8; i++ {
-		result[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(result)
+	return util.GetRandomStr(8, "", "")
 }

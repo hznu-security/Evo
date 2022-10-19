@@ -16,8 +16,8 @@ func TestSSHExec(t *testing.T) {
 	ip := "101.37.13.45"
 	user := "ymk"
 	pwd := "ymk0910"
-	cmd :="whoami"
-	res ,err := SSHExec(ip,user,pwd,cmd)
+	cmd := "whoami"
+	res, err := SSHExec(ip, user, pwd, cmd)
 	if err != nil {
 		log.Fatalln(err)
 	}

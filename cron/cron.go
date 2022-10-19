@@ -10,26 +10,25 @@ import (
 	"Evo/config"
 	"Evo/service/game"
 	"errors"
+	"github.com/robfig/cron/v3"
 	"log"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/robfig/cron/v3"
 )
 
-func InitCron() {
-	cron1 := cron.New()
+var startEntry, endEntry, roundEntry cron.EntryID // 一个开启比赛的计时任务,一个结束比赛的计时任务,一个每轮比赛执行一次的计时任务
+var cron1 = cron.New()
 
-	// var entryEnd cron.EntryID
-	var entryStart, entryRound cron.EntryID
+// StartCron 开启计时
+func StartCron() error {
 	specStart, err := parseTime(config.START_TIME)
 	if err != nil {
-		panic(errors.New("解析 start_time 失败"))
+		return errors.New("解析 start_time 失败")
 	}
 	specEnd, err := parseTime(config.END_TIME)
 	if err != nil {
-		panic(errors.New("解析 start_time 失败"))
+		return errors.New("解析 start_time 失败")
 	}
 
 	specRound := "@every" + strconv.Itoa(int(config.ROUND_TIME)) + "m"
@@ -37,18 +36,30 @@ func InitCron() {
 	if err != nil {
 		panic(err)
 	}
-	entryStart, _ = cron1.AddFunc(specStart, func() {
-		_, _ = cron1.AddFunc(specRound, func() { // 注册每10分钟一执行的任务
+
+	startEntry, _ = cron1.AddFunc(specStart, func() {
+		roundEntry, _ = cron1.AddFunc(specRound, func() { // 注册每10分钟一执行的任务
 			log.Println("新回合开始")
 			config.ROUND_NOW++
 			game.RefreshFlag()
 		})
 	})
-	_, _ = cron1.AddFunc(specEnd, func() {
-		cron1.Remove(entryRound)
-		cron1.Remove(entryStart)
+	endEntry, _ = cron1.AddFunc(specEnd, func() {
+		config.ROUND_NOW++ // 确保时间到了之后，ROUND_NOW的值一定大于GAME_ROUND
+		cron1.Remove(startEntry)
+		cron1.Remove(roundEntry)
+		cron1.Remove(endEntry)
 	})
+	cron1.Start()
+	return nil
+}
 
+// TerminateCron 终止计时
+func TerminateCron() {
+	cron1.Remove(startEntry)
+	cron1.Remove(endEntry)
+	cron1.Remove(roundEntry)
+	cron1.Stop()
 }
 
 func parseTime(timeStr string) (string, error) {

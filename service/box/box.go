@@ -22,18 +22,23 @@ func ResetAllStatus() error {
 
 // ResetAllScore 重置靶机分数
 func ResetAllScore() error {
-	err := db.DB.Model(&model.Box{}).Update("score", db.DB.Model(&model.Challenge{}).
-		Select("score").Where("boxes.challenge_id = challenges.id")).Error
+	var challenges []model.Challenge
+	db.DB.Select([]string{"id", "score"}).Find(&challenges)
+	var challengeMap map[uint]float64
+	for _, challenge := range challenges {
+		challengeMap[challenge.ID] = challenge.Score
+	}
+	var boxes []model.Box
+	db.DB.Where("is_attacked = ? OR is_down = ?", true, true).Find(&boxes)
+	for i := 0; i < len(boxes); i++ {
+		boxes[i].Score = challengeMap[boxes[i].ChallengeID]
+		boxes[i].IsDown = false
+		boxes[i].IsAttacked = false
+	}
+	err := db.DB.Save(&boxes).Error
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func ResetAllAttack() error {
-	if err := db.DB.Model(&model.Box{}).Where("is_down = ?", false).
-		Update("is_attacked", false).Error; err != nil {
-		return err
-	}
-	return nil
-}

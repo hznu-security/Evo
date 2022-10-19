@@ -7,8 +7,8 @@
 package ctrl
 
 import (
+	"Evo/cron"
 	"encoding/json"
-
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
@@ -22,7 +22,7 @@ func PutConfig(c *gin.Context) {
 		})
 	}
 
-	if len(m) > 15 {
+	if len(m) > 20 {
 		Fail(c, "参数项过多，请检查", nil)
 		return
 	}
@@ -67,12 +67,18 @@ func ResetConfig(c *gin.Context) {
 
 }
 
-// StartGame 开启比赛，加入计时任务
+// StartGame 设置比赛可以开始，到时间自动开启比赛
 func StartGame(c *gin.Context) {
-	
+	err := cron.StartCron()
+	if err != nil {
+		Error(c, err.Error(), nil)
+		return
+	}
+	Success(c, "success", nil)
 }
 
-// TerminateGame 终止比赛，移除计时任务
+// TerminateGame 终止比赛
 func TerminateGame(c *gin.Context) {
-
+	cron.TerminateCron()
+	Success(c, "success", nil)
 }
