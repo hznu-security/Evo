@@ -15,6 +15,10 @@ import (
 	"time"
 )
 
+/**
+执行单元测试需要在config目录下单独添加config.yml文件
+*/
+
 func TestConfig(t *testing.T) {
 	//获取一个路径,到当前目录
 	wd, _ := os.Getwd()
@@ -120,6 +124,6 @@ func TestRound(t *testing.T) {
 	start, _ := time.ParseInLocation(TIME_FORMAT, startTime, time.Local)
 	end, _ := time.ParseInLocation(TIME_FORMAT, endTime, time.Local)
 	processing := int(end.Sub(start).Minutes())
-	rounds := processing/roundTime
+	rounds := processing / roundTime
 	log.Println(rounds)
 }

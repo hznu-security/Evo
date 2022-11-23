@@ -52,6 +52,7 @@ func TeamLogin(c *gin.Context) {
 	if err != nil {
 		log.Println(err.Error())
 	}
+	db.DB.Model(model.Team{}).Where("id = ?", team.ID).Update("token", token)
 	Success(c, "登陆成功", gin.H{
 		"token": token,
 		"id":    team.ID,
@@ -121,18 +122,25 @@ func SubmitFlag(c *gin.Context) {
 }
 
 type info struct {
-	team  model.Team
-	round uint
+	Team  model.Team  `json:"team"`
+	Round uint        `json:"round"`
+	Token string      `json:"token"`
+	Boxes []model.Box `json:"boxes"`
 }
 
 // Info 获取信息
 func Info(c *gin.Context) {
 	teamId := c.Query("teamId")
 	var teamInfo model.Team
-	db.DB.Where("id = ?", teamId).Select([]string{"name", "logo", "score"}).First(&teamInfo)
+	db.DB.Where("id = ?", teamId).Select([]string{"name", "logo", "score", "token"}).First(&teamInfo)
+	var box []model.Box
+	db.DB.Where("team_id = ?", teamId).Select([]string{"port", "ssh_user", "ssh_pwd", "score", "is_down", "is_attacked"}).
+		Find(&box)
 	res := info{
-		team:  teamInfo,
-		round: config.ROUND_NOW,
+		Team:  teamInfo,
+		Round: config.ROUND_NOW,
+		Token: teamInfo.Token,
+		Boxes: box,
 	}
 	Success(c, "success", gin.H{
 		"info": res,
@@ -187,7 +195,9 @@ func PostTeam(c *gin.Context) {
 		Fail(c, "添加失败", nil)
 		log.Println(err.Error())
 	} else {
-		Success(c, "添加成功", nil)
+		Success(c, "添加成功", gin.H{
+			"team": team,
+		})
 		log.Println("Add Team", team.Name)
 	}
 }
@@ -197,8 +207,8 @@ func PutTeam(c *gin.Context) {
 
 	type Form struct {
 		TeamId uint   `json:"teamId" binding:"required"`
-		Name   string `binding:"required"`
-		Logo   string
+		Name   string `binding:"required,max=200"`
+		Logo   string `binding:"max=255"`
 	}
 
 	var form Form
@@ -222,7 +232,9 @@ func PutTeam(c *gin.Context) {
 		Fail(c, "保存失败", nil)
 		return
 	}
-	Success(c, "修改成功", nil)
+	Success(c, "修改成功", gin.H{
+		"team": team,
+	})
 }
 
 // GetTeam 列出所有队伍
@@ -304,14 +316,11 @@ func ResetPwd(c *gin.Context) {
 
 // UploadLogo 上传队伍logo
 func UploadLogo(c *gin.Context) {
-	teamId := c.PostForm("teamId")
-	if teamId == "" {
-		Fail(c, "缺少队伍id", nil)
-		return
-	}
+
 	logo, err := c.FormFile("logo")
 	if err != nil {
 		Fail(c, "上传失败", nil)
+		log.Println(err)
 		return
 	}
 	ext := filepath.Ext(logo.Filename)
@@ -319,17 +328,28 @@ func UploadLogo(c *gin.Context) {
 		Fail(c, "图片格式不正确", nil)
 		return
 	}
-	_, err = strconv.Atoi(teamId)
+
+	logoPath := viper.GetString("logo.path")
+	err = util.TestAndMake(logoPath)
 	if err != nil {
-		Fail(c, "参数异常", nil)
+		Error(c, "上传失败", nil)
+		log.Println(err)
 		return
 	}
-	logoPath := viper.GetString("image.path")
 	dst := util.GetRandomStr(10, logoPath, ext)
 	err = c.SaveUploadedFile(logo, dst)
 	if err != nil {
 		Error(c, "上传失败", nil)
+		log.Println(err)
 		return
 	}
-	Success(c, "success", nil)
+	dst = dst[1:] // 去除路径开头的  .
+	// 如果teamId 为空，表示是先上传logo再添加队伍的情况，如果teamId不为空，则是添加队伍，再上传logo
+	teamId := c.PostForm("teamId")
+	if teamId != "" {
+		db.DB.Model(model.Team{}).Where("id = ?", teamId).Update("logo", dst)
+	}
+	Success(c, "success", gin.H{
+		"path": dst,
+	})
 }

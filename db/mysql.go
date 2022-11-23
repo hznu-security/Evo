@@ -26,7 +26,6 @@ func InitDB() {
 	pwd := viper.GetString("datasource.pwd")
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
 		username, pwd, host, port, database)
-
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic(err)

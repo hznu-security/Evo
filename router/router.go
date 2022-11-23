@@ -8,7 +8,8 @@ import (
 
 func InitRouter() *gin.Engine {
 	r := gin.Default()
-
+	// 静态文件服务
+	r.Static("/upload", "./upload")
 	// 登录外所有接口都通过中间件进行验证
 	manager := r.Group("/manager")
 	{
@@ -49,18 +50,18 @@ func InitRouter() *gin.Engine {
 			challenge.PUT("", ctrl.PutChallenge)
 			challenge.POST("visible", ctrl.SetVisible)
 			challenge.POST("unvisible", ctrl.SetUnVisible)
-			challenge.DELETE("/challenge", ctrl.DelChallenge)
-			challenge.GET("/challenge", ctrl.GetChallenge)
+			challenge.DELETE("", ctrl.DelChallenge)
+			challenge.GET("", ctrl.GetChallenge)
 		}
 		box := manager.Group("/box")
 		{
 			box.POST("", ctrl.PostBox)
 			box.PUT("", ctrl.PutBox)
 			box.GET("", ctrl.GetBox)
-			box.GET("", ctrl.GenerateFlag)
-			box.GET("", ctrl.TestSSH)
+			box.GET("/test", ctrl.TestSSH)
 			box.DELETE("", ctrl.DelBox)
 			box.GET("/reset", ctrl.ResetBox)
+			box.GET("/testall", ctrl.TestSSHAll)
 		}
 		team := manager.Group("/team") //   8080:/manager/team/....
 		{
@@ -72,9 +73,18 @@ func InitRouter() *gin.Engine {
 			team.POST("/logo", ctrl.UploadLogo)
 		}
 		image := manager.Group("/image")
-		image.POST("", ctrl.PostImage)
-		image.GET("", ctrl.GetImage)
-		image.DELETE("", ctrl.DelImage)
+		{
+			image.POST("", ctrl.PostImage)
+			image.GET("", ctrl.GetImage)
+			image.DELETE("", ctrl.DelImage)
+		}
+		//ip := manager.Group("/ip")
+		//{
+		//	ip.GET("/interface", ctrl.GetInterfaces)
+		//	ip.GET("", ctrl.GetIpAddress)
+		//	ip.POST("", ctrl.PostIpAddress)
+		//	ip.DELETE("", ctrl.DelIpAddress)
+		//}
 	}
 
 	team := r.Group("/team") //    8080:/team/.....   上下两个team不一样

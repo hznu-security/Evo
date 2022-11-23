@@ -57,7 +57,7 @@ func InitConfig() {
 	workDir, _ := os.Getwd()
 	viper.SetConfigName("config")
 	viper.SetConfigType("yml")
-	viper.AddConfigPath(workDir + "/config")
+	viper.AddConfigPath(workDir)
 	err := viper.ReadInConfig()
 	if err != nil {
 		panic(err)
@@ -71,6 +71,8 @@ func InitConfig() {
 	END_TIME = viper.GetString("game.endtime")
 	DOWN_SCORE = viper.GetUint("game.downscore")
 	ATTACK_SCORE = viper.GetUint("game.attackscore")
+	ROUND_TIME = viper.GetUint("game.roundtime")
+
 	start, err := time.ParseInLocation(TIME_FORMAT, START_TIME, time.Local)
 	if err != nil {
 		panic("加载比赛时间失败")

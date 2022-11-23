@@ -16,10 +16,10 @@ import (
 
 func TestStartContainer(t *testing.T) {
 	image := "easyweb"
-	ip := "172.18.0.6"
 	name := "testweb"
-	net := "test"
-	err := StartContainer(image, name, net, ip)
+	port := "222:22,8080:8080"
+	portMap := ParsePort(port)
+	err := StartContainer(image, name, &portMap)
 	if err != nil {
 		t.Log(err.Error())
 		t.Fail()
@@ -36,7 +36,8 @@ func TestSetContainerSSH(t *testing.T) {
 		t.Log(err.Error())
 		t.Fail()
 	}
-	client, err := ssh.Dial("tcp", "172.18.0.6:22", &ssh.ClientConfig{
+	ip, _ := GetIp(container)
+	client, err := ssh.Dial("tcp", ip+":22", &ssh.ClientConfig{
 		User:            "root",
 		Auth:            []ssh.AuthMethod{ssh.Password(pwd)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
@@ -84,7 +85,7 @@ func TestResetContainer(t *testing.T) {
 
 func TestContainerExec(t *testing.T) {
 	cmd := "whoami"
-	container := "63df91046726"
+	container := "testweb"
 	inspect, err := ContainerExec(container, cmd)
 	if err != nil {
 		t.Fatal(err)

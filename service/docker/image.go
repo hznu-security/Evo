@@ -9,6 +9,7 @@ package docker
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -38,11 +39,11 @@ func BuildImage(path string, dockerfile string, name string) ([]byte, error) {
 		Dockerfile:  dockerfile,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("镜像构建错误 %v", err)
 	}
 	response, err := ioutil.ReadAll(buildResponse.Body)
 	if err != nil {
-		return nil, errors.New("读取buildResponse错误")
+		return nil, fmt.Errorf("读取buildResponse错误 %v", err)
 	}
 
 	err = buildResponse.Body.Close()
@@ -86,7 +87,7 @@ func RemoveImage(id string) error {
 	}
 	_, err = cli.ImageRemove(ctx, id, types.ImageRemoveOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("删除镜像失败 %v", err)
 	}
 
 	return nil

@@ -51,7 +51,7 @@ type putAccountForm struct {
 	Pwd     string `binding:"required"`
 }
 
-// PutAccount 修改管理员账号的密码
+// PutAccount 修改管理员账号
 func PutAccount(c *gin.Context) {
 	var form putAccountForm
 	err := c.ShouldBind(&form)
@@ -61,19 +61,15 @@ func PutAccount(c *gin.Context) {
 		})
 		return
 	}
-
 	var admin model.Admin
-	// 事务写法
-	err = db.DB.Transaction(func(tx *gorm.DB) error {
-		if err := db.DB.First(&admin, form.AdminId).Error; err != nil {
-			return err
-		}
-		admin.Pwd = auth.Encode(form.Pwd)
-		if err = db.DB.Save(&admin).Error; err != nil {
-			return err
-		}
-		return nil
-	})
+	db.DB.Select([]string{"id","name","pwd"}).First(&admin, form.AdminId)
+	if admin.ID == 0 {
+		Fail(c, "账号不存在", nil)
+		return
+	}
+	admin.Name = form.Name
+	admin.Pwd = auth.Encode(form.Pwd)
+
 	if err != nil {
 		// 判断是不是查不到
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -86,8 +82,11 @@ func PutAccount(c *gin.Context) {
 		}
 		return
 	}
-	log.Println("add account:", admin.Name)
-	Success(c, "修改成功", nil)
+	log.Println("modify account:", admin.Name)
+	admin.Pwd = ""
+	Success(c, "修改成功", gin.H{
+		"admin": admin,
+	})
 }
 
 // DelAccount 删除管理员账号
@@ -137,7 +136,7 @@ func DelAccount(c *gin.Context) {
 // GetAccount 获得所有管理员账号
 func GetAccount(c *gin.Context) {
 	admins := make([]model.Admin, 0)
-	db.DB.Select([]string{"id", "name"}).Find(&admins)
+	db.DB.Select([]string{"id","created_at", "name"}).Find(&admins)
 
 	Success(c, "success", gin.H{
 		"admins": admins,

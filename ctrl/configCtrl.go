@@ -15,11 +15,13 @@ import (
 
 // PutConfig 修改比赛相关配置
 func PutConfig(c *gin.Context) {
-	var m = make(map[string]string)
+	// value必须是interface{}类型，不然bool类型绑定不上
+	var m = make(map[string]interface{})
 	if err := json.NewDecoder(c.Request.Body).Decode(&m); err != nil {
 		Fail(c, "参数绑定异常", gin.H{
 			"config": m,
 		})
+		return
 	}
 
 	if len(m) > 20 {
@@ -28,7 +30,12 @@ func PutConfig(c *gin.Context) {
 	}
 
 	for k, v := range m {
-		if v == "" || len(v) > 50 {
+		_, ok := v.(bool)
+		if ok {
+			continue
+		}
+		str := v.(string)
+		if v == "" || len(str) > 50 {
 			Fail(c, "参数:"+k+"异常", nil)
 			return
 		}

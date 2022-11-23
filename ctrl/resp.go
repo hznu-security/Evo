@@ -12,6 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const BindError ="参数绑定错误"
+
 func Response(c *gin.Context, httpStatus int, code int, msg string, data gin.H) {
 	c.JSON(httpStatus, gin.H{
 		"code": code,

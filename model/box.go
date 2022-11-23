@@ -7,8 +7,8 @@ type Box struct {
 	ChallengeID uint
 	TeamId      uint
 	Name        string `gorm:"type:varchar(100)"`
-	Ip          string `gorm:"type:varchar(20)"`
-	Port        string `gorm:"type:varchar(20)"`
+	//Ip          string `gorm:"type:varchar(20)"`
+	Port        string `gorm:"type:varchar(100)"`
 	SshUser     string `gorm:"type:varchar(20)"`
 	SshPwd      string `gorm:"type:varchar(50)"`
 	Score       float64

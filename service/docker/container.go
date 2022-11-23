@@ -9,32 +9,32 @@ package docker
 import (
 	"Evo/auth"
 	"context"
+	"github.com/docker/go-connections/nat"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 )
 
-func StartContainer(image, name, net, ip string) error {
+func StartContainer(image, name string, portMap *nat.PortMap) error {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts()
 	if err != nil {
 		return err
 	}
+	exports := make(nat.PortSet)
+	for k, _ := range *portMap {
+		exports[k] = struct{}{}
+	}
+
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image: image,
-	}, nil, &network.NetworkingConfig{
-		EndpointsConfig: map[string]*network.EndpointSettings{
-			net: {
-				IPAMConfig: &network.EndpointIPAMConfig{
-					IPv4Address: ip,
-				},
-				IPAddress: ip,
-			},
-		},
-	}, nil, name)
+		Image:        image,
+		ExposedPorts: exports,
+	}, &container.HostConfig{
+		PortBindings: *portMap,
+	}, nil, nil, name)
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,6 @@ func ContainerExec(container string, command string) (types.ContainerExecInspect
 	if err != nil {
 		return types.ContainerExecInspect{}, err
 	}
-	//cmd := strings.Split(command, " ")
 	id, _ := cli.ContainerExecCreate(ctx, container, types.ExecConfig{
 		AttachStderr: true,
 		AttachStdout: true,
@@ -140,4 +139,31 @@ func ContainerExec(container string, command string) (types.ContainerExecInspect
 	})
 	inspect, err := cli.ContainerExecInspect(ctx, id.ID)
 	return inspect, nil
+}
+
+func ParsePort(port string) nat.PortMap {
+	portMap := make(map[nat.Port][]nat.PortBinding)
+	portSet := make(nat.PortSet, 0)
+	portBind := strings.Split(port, ",")
+	for _, v := range portBind {
+		ports := strings.Split(v, ":")
+		portSet[nat.Port(ports[1])] = struct{}{}
+		portMap[nat.Port(ports[1])] = []nat.PortBinding{
+			{
+				HostIP:   "0.0.0.0",
+				HostPort: ports[0],
+			},
+		}
+	}
+	return portMap
+}
+
+func GetIp(name string) (string, error) {
+	ctx := context.Background()
+	cli, _ := client.NewClientWithOpts()
+	res, err := cli.ContainerInspect(ctx, name)
+	if err != nil {
+		return "", err
+	}
+	return res.NetworkSettings.IPAddress, nil
 }

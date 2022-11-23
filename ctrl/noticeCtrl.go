@@ -60,6 +60,7 @@ func PutNotice(c *gin.Context) {
 		Fail(c, "通知不存在", gin.H{
 			"notificationId": form.NotificationId,
 		})
+		return
 	}
 	notice.Title = form.Title
 	notice.Content = form.Content
@@ -73,7 +74,9 @@ func PutNotice(c *gin.Context) {
 func GetNotice(c *gin.Context) {
 	notices := make([]model.Notification, 0)
 	db.DB.Find(&notices)
-	Success(c, "success", gin.H{})
+	Success(c, "success", gin.H{
+		"notifications": notices,
+	})
 }
 
 // DelNotice 删除通知
@@ -92,5 +95,8 @@ func DelNotice(c *gin.Context) {
 		Fail(c, "通知不存在", gin.H{
 			"notificationId": id,
 		})
+		return
 	}
+	db.DB.Delete(&notice)
+	Success(c, "success", nil)
 }

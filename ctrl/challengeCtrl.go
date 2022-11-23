@@ -62,6 +62,7 @@ func GetChallenge(c *gin.Context) {
 	Success(c, "查找成功", gin.H{
 		"challenges": challenges,
 	})
+	return
 }
 
 func DelChallenge(c *gin.Context) {
@@ -94,12 +95,11 @@ func DelChallenge(c *gin.Context) {
 
 type putChallengeForm struct {
 	ChallengeId uint    `binding:"required"`
-	Title       string  `binding:"required"`
-	Desc        string  `binding:"required"`
+	Title       string  `binding:"required,max=100"`
+	Desc        string  `binding:"required,max=255"`
 	Score       float64 `binding:"required"`
 	AutoRefresh bool    `binding:"required"`
-	Command     string	`binding:"max=255"`
-	//Type        int `binding:"required"`
+	Command     string  `binding:"required,max=255"`
 }
 
 func PutChallenge(c *gin.Context) {
@@ -146,7 +146,7 @@ func SetVisible(c *gin.Context) {
 		return
 	}
 
-	err = db.DB.Model(&model.Challenge{}).Where("challengeId = ?", id).
+	err = db.DB.Model(&model.Challenge{}).Where("id = ?", id).
 		Update("visible", true).Error
 	if err != nil {
 		Fail(c, "设置失败", nil)
@@ -165,7 +165,7 @@ func SetUnVisible(c *gin.Context) {
 		return
 	}
 
-	err = db.DB.Model(&model.Challenge{}).Where("challengeId = ?", id).
+	err = db.DB.Model(&model.Challenge{}).Where("id = ?", id).
 		Update("visible", false).Error
 	if err != nil {
 		Fail(c, "设置失败", nil)

@@ -52,11 +52,15 @@ func PostImage(c *gin.Context) {
 			Success(c, "读取异常", nil)
 			return
 		} else {
-			Fail(c, "镜像构建失败", nil)
+			log.Println(err)
+			Fail(c, "镜像构建失败", gin.H{
+				"error": err,
+				"resp":  string(resp),
+			})
 			return
 		}
 	}
-	Success(c, "构建成功", gin.H{
+	Success(c, "", gin.H{
 		"process": string(resp),
 	})
 }
@@ -79,9 +83,11 @@ func DelImage(c *gin.Context) {
 	err := docker.RemoveImage(imageId)
 	if err != nil {
 		log.Println(err.Error())
-		Error(c, "删除失败", nil)
+		Error(c, "删除失败", gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
-	log.Println("del image", imageId)
+	log.Println("删除镜像", imageId)
 	Success(c, "成功", nil)
 }
