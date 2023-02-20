@@ -14,6 +14,10 @@ import (
 	"os/exec"
 )
 
+/**
+已弃用
+*/
+
 func GetInterfaces(c *gin.Context) {
 	ifis, err := net.Interfaces()
 	if err != nil {

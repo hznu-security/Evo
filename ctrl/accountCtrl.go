@@ -130,7 +130,6 @@ func DelAccount(c *gin.Context) {
 			return
 		}
 	}
-
 }
 
 // GetAccount 获得所有管理员账号
