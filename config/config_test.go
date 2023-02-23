@@ -127,3 +127,11 @@ func TestRound(t *testing.T) {
 	rounds := processing / roundTime
 	log.Println(rounds)
 }
+
+// 基准测试获取时间的操作，很快
+func BenchmarkGetRoundRemainTime(b *testing.B) {
+	InitConfig()
+	for i := 0; i < b.N; i++ {
+		GetRoundRemainTime()
+	}
+}

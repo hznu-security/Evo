@@ -15,13 +15,13 @@ import (
 
 // GenerateFlag 生成flag
 func GenerateFlag() error {
-	var boxes []model.Box
+	var boxes []model.GameBox
 	db.DB.Find(&boxes)
 	// 直接遍历靶机
 	for _, box := range boxes {
 		flags := make([]model.Flag, config.GAME_ROUND)
 		for i := 0; i < int(config.GAME_ROUND); i++ {
-			flags[i].BoxId = box.ID
+			flags[i].GameBoxId = box.ID
 			flags[i].ChallengeID = box.ChallengeID
 			flags[i].Round = uint(i + 1)
 			flags[i].TeamId = box.TeamId
@@ -49,7 +49,7 @@ func RefreshFlag() {
 
 	m := make(map[uint]string)
 	for _, flag := range flags {
-		m[flag.BoxId] = flag.Flag
+		m[flag.GameBoxId] = flag.Flag
 	}
 	for i := 0; i < len(boxes); i++ {
 		go execRefresh(&boxes[i], m[boxes[i].ID])

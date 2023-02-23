@@ -4,7 +4,7 @@
  * 描述		:这里封装返沪请求的方法
  */
 
-package ctrl
+package util
 
 import (
 	"net/http"

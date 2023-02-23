@@ -1,100 +1,115 @@
 package router
 
 import (
-	"Evo/ctrl"
+	"Evo/ctrl/info"
+	"Evo/ctrl/manage"
+	"Evo/ctrl/team"
 	"Evo/middleware"
+	"Evo/starry"
 	"github.com/gin-gonic/gin"
 )
 
 func InitRouter() *gin.Engine {
 	r := gin.Default()
+	r.Use(middleware.CORSMiddleware())
 	// 静态文件服务
 	r.Static("/upload", "./upload")
+
+	r.GET("/websocket", starry.ServeWebsocket)
+
+	infoGroup := r.Group("/info")
+	{
+		infoGroup.GET("/time", info.Time)
+		infoGroup.GET("/rank", info.GetRank)
+	}
+	r.GET("/time", info.Time)
+
 	// 登录外所有接口都通过中间件进行验证
 	manager := r.Group("/manager")
 	{
-		manager.POST("/login", ctrl.AdminLogin)
+		manager.POST("/login", manage.AdminLogin)
 		manager.Use(middleware.AuthMW())
 		account := manager.Group("/account")
 		{
-			account.POST("", ctrl.PostAccount)
-			account.PUT("", ctrl.PutAccount)
-			account.DELETE("", ctrl.DelAccount)
-			account.GET("", ctrl.GetAccount)
+			account.POST("", manage.PostAccount)
+			account.PUT("", manage.PutAccount)
+			account.DELETE("", manage.DelAccount)
+			account.GET("", manage.GetAccount)
 		}
 		flag := manager.Group("/flag")
 		{
-			flag.POST("", ctrl.PostFlag)
-			flag.GET("/generate", ctrl.GenerateFlag)
-			flag.GET("/export", ctrl.ExportFlag)
-			flag.GET("/filter", ctrl.FilterFlag)
+			//flag.POST("", manage.PostFlag)
+			flag.GET("/generate", manage.GenerateFlag)
+			flag.GET("/export", manage.ExportFlag)
+			flag.POST("", manage.GetFlag)
 		}
 		config := manager.Group("/config")
 		{
-			config.GET("", ctrl.GetConfig)
-			config.GET("/reset", ctrl.ResetConfig)
-			config.PUT("", ctrl.PutConfig)
-			config.GET("/start", ctrl.StartGame)
-			config.GET("/terminate", ctrl.TerminateGame)
+			config.GET("", manage.GetConfig)
+			config.GET("/reset", manage.ResetConfig)
+			config.PUT("", manage.PutConfig)
+			config.GET("/start", manage.StartGame)
+			config.GET("/terminate", manage.TerminateGame)
 		}
 		notification := manager.Group("/notification")
 		{
-			notification.PUT("", ctrl.PutNotice)
-			notification.POST("", ctrl.PostNotice)
-			notification.DELETE("", ctrl.DelNotice)
-			notification.GET("", ctrl.GetNotice) //管理端获取通知
+			notification.PUT("", manage.PutNotice)
+			notification.POST("", manage.PostNotice)
+			notification.DELETE("", manage.DelNotice)
+			notification.GET("", manage.GetNotice) //管理端获取通知
 		}
 		challenge := manager.Group("/challenge")
 		{
-			challenge.POST("", ctrl.PostChallenge)
-			challenge.PUT("", ctrl.PutChallenge)
-			challenge.POST("visible", ctrl.SetVisible)
-			challenge.POST("unvisible", ctrl.SetUnVisible)
-			challenge.DELETE("", ctrl.DelChallenge)
-			challenge.GET("", ctrl.GetChallenge)
+			challenge.POST("", manage.PostChallenge)
+			challenge.PUT("", manage.PutChallenge)
+			challenge.POST("visible", manage.Visible)
+			challenge.DELETE("", manage.DelChallenge)
+			challenge.GET("", manage.GetChallenge)
 		}
 		box := manager.Group("/box")
 		{
-			box.POST("", ctrl.PostBox)
-			box.PUT("", ctrl.PutBox)
-			box.GET("", ctrl.GetBox)
-			box.GET("/test", ctrl.TestSSH)
-			box.DELETE("", ctrl.DelBox)
-			box.GET("/reset", ctrl.ResetBox)
-			box.GET("/testall", ctrl.TestSSHAll)
+			box.POST("", manage.PostBox)
+			box.PUT("", manage.PutBox)
+			box.GET("", manage.GetBox)
+			box.GET("/test", manage.TestSSH)
+			box.DELETE("", manage.DelBox)
+			box.GET("/reset", manage.ResetBox)
+			box.GET("/testall", manage.TestSSHAll)
 		}
-		team := manager.Group("/team") //   8080:/manager/team/....
+		time := manager.Group("/team") //   8080:/manager/team/....
 		{
-			team.GET("", ctrl.GetTeam)
-			team.POST("", ctrl.PostTeam)
-			team.PUT("", ctrl.PutTeam)
-			team.GET("/reset", ctrl.ResetPwd)
-			team.DELETE("", ctrl.DelTeam)
-			team.POST("/logo", ctrl.UploadLogo)
+			time.GET("", manage.GetTeam)
+			time.POST("", manage.PostTeam)
+			time.PUT("", manage.PutTeam)
+			time.GET("/reset", manage.ResetPwd)
+			time.DELETE("", manage.DelTeam)
+			time.POST("/logo", manage.UploadLogo)
 		}
 		image := manager.Group("/image")
 		{
-			image.POST("", ctrl.PostImage)
-			image.GET("", ctrl.GetImage)
-			image.DELETE("", ctrl.DelImage)
+			image.POST("", manage.PostImage)
+			image.GET("", manage.GetImage)
+			image.DELETE("", manage.DelImage)
 		}
-		//ip := manager.Group("/ip")
-		//{
-		//	ip.GET("/interface", ctrl.GetInterfaces)
-		//	ip.GET("", ctrl.GetIpAddress)
-		//	ip.POST("", ctrl.PostIpAddress)
-		//	ip.DELETE("", ctrl.DelIpAddress)
-		//}
+		starryGroup := manager.Group("/starry")
+		{
+			starryGroup.POST("/attack", starry.Attack)
+			starryGroup.POST("/rank", starry.Rank)
+			starryGroup.POST("/status", starry.Status)
+			starryGroup.POST("/time", starry.Time)
+			starryGroup.POST("/clear", starry.Clear)
+			starryGroup.POST("/clearall", starry.ClearAll)
+			starryGroup.POST("/round", starry.Round)
+		}
 	}
 
-	team := r.Group("/team") //    8080:/team/.....   上下两个team不一样
-	team.POST("/login", ctrl.TeamLogin)
+	teamGroup := r.Group("/team") //    8080:/team/.....   上下两个team不一样
+	teamGroup.POST("/login", team.TeamLogin)
 	{
-		team.POST("/flag", middleware.SubmitMW(), middleware.AuthMW(), ctrl.SubmitFlag) // 比赛结束后,不允许提交
-		team.Use(middleware.AuthMW())
-		team.GET("/info", ctrl.Info)
-		team.GET("/rank", ctrl.GetRank)
-		team.GET("/notification", ctrl.GetNotification) //选手端获取通知
+		teamGroup.POST("/flag", middleware.SubmitMW(), middleware.AuthMW(), team.SubmitFlag) // 比赛结束后,不允许提交
+		//team.Use(middleware.AuthMW())
+		teamGroup.GET("/info", team.Info)
+		teamGroup.GET("/notification", team.GetNotification) //选手端获取通知
 	}
 	return r
 }

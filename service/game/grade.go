@@ -12,10 +12,11 @@ import (
 	"Evo/model"
 )
 
+// TODO 检查
 // CalcAttack 统计分数
 func CalcAttack() error {
 	round := config.ROUND_NOW - 1
-	var allBoxes []model.Box
+	var allBoxes []model.GameBox
 	// 直接查出所有靶机
 	db.DB.Select([]string{"id", "challenge_id", "team_id", "score"}).Find(&allBoxes)
 
@@ -47,17 +48,18 @@ func CalcAttack() error {
 	return err
 }
 
+// TODO 重写，根据down表来计算
 func CalcDown() error {
 	downScore := float64(config.DOWN_SCORE)
 	boxMap1 := make(map[uint][]uint)
-	var downBoxes []model.Box
+	var downBoxes []model.GameBox
 	db.DB.Where("is_down = ?", true).Select([]string{"id", "challenge_id", "team_id", "score"}).Find(&downBoxes)
 	for i := 0; i < len(downBoxes); i++ {
 		boxMap1[downBoxes[i].ChallengeID] = append(boxMap1[downBoxes[i].ChallengeID], downBoxes[i].ID)
 	}
 
 	boxMap2 := make(map[uint][]uint)
-	var normalBoxes []model.Box
+	var normalBoxes []model.GameBox
 	db.DB.Where("is_down = ?", false).Select([]string{"id", "challenge_id", "team_id", "score"}).Find(&normalBoxes)
 	for i := 0; i < len(normalBoxes); i++ {
 		boxMap2[normalBoxes[i].ChallengeID] = append(boxMap2[normalBoxes[i].ChallengeID], normalBoxes[i].ID)

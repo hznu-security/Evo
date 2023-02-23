@@ -8,6 +8,7 @@ package middleware
 
 import (
 	"Evo/auth"
+	"log"
 	"net/http"
 	"strings"
 
@@ -22,6 +23,7 @@ func AuthMW() gin.HandlerFunc {
 				"code": 401,
 				"msg":  "权限不足",
 			})
+			log.Println("权限不足")
 			c.Abort()
 			return
 		}
@@ -33,6 +35,7 @@ func AuthMW() gin.HandlerFunc {
 				"code": 401,
 				"msg":  "权限不足",
 			})
+			log.Println("权限不足")
 			// Abort 函数会终端这次请求，后面的函数不会再被调用
 			c.Abort()
 			return
@@ -50,9 +53,9 @@ func AuthMW() gin.HandlerFunc {
 				"code": 401,
 				"msg":  "权限不足",
 			})
+			log.Println("权限不足")
 		}
 		c.Set("teamId", claims.ID)
 		c.Next()
 	}
 }
-

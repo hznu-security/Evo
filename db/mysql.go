@@ -42,5 +42,5 @@ func InitDB() {
 	}
 	db.AutoMigrate(&model.Admin{}, &model.Attack{}, &model.Box{},
 		&model.Challenge{}, &model.Flag{},
-		&model.Notification{}, &model.Team{}, &model.Webhook{})
+		&model.Notification{}, &model.Team{}, &model.Webhook{}, model.GameBox{})
 }

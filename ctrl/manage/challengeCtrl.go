@@ -4,11 +4,12 @@
  * 描述		:接收管理题目的请求
  */
 
-package ctrl
+package manage
 
 import (
 	"Evo/db"
 	"Evo/model"
+	"Evo/util"
 	"github.com/gin-gonic/gin"
 	"log"
 	"strconv"
@@ -19,18 +20,18 @@ func PostChallenge(c *gin.Context) {
 	var form model.Challenge
 	err := c.ShouldBind(&form)
 	if err != nil {
-		Fail(c, "参数绑定错误", nil)
+		util.Fail(c, "参数绑定错误", nil)
 		return
 	}
 	if form.AutoRefresh && form.Command == "" {
-		Fail(c, "缺少刷新flag的命令", nil)
+		util.Fail(c, "缺少刷新flag的命令", nil)
 		return
 	}
 	var challenge model.Challenge
 
 	db.DB.Where("title = ?", form.Title).First(&challenge)
 	if challenge.ID != 0 {
-		Fail(c, "题目已存在", gin.H{
+		util.Fail(c, "题目已存在", gin.H{
 			"challenge": form,
 		})
 		return
@@ -46,11 +47,11 @@ func PostChallenge(c *gin.Context) {
 	err = db.DB.Create(&challenge).Error
 	if err != nil {
 		log.Println(err)
-		Error(c, "添加失败", nil)
+		util.Error(c, "添加失败", nil)
 		return
 	}
 	log.Println("添加题目:", challenge.Title)
-	Success(c, "添加成功", gin.H{
+	util.Success(c, "添加成功", gin.H{
 		"challenge": challenge,
 	})
 }
@@ -59,38 +60,38 @@ func PostChallenge(c *gin.Context) {
 func GetChallenge(c *gin.Context) {
 	challenges := make([]model.Challenge, 0)
 	db.DB.Find(&challenges)
-	Success(c, "查找成功", gin.H{
+	util.Success(c, "查找成功", gin.H{
 		"challenges": challenges,
 	})
 	return
 }
 
+// TODO  删除题目的时候，删除靶机
 func DelChallenge(c *gin.Context) {
 	challengeId := c.Query("challengeId")
 	id, err := strconv.Atoi(challengeId)
 	if err != nil {
-		Fail(c, "参数格式有误", gin.H{
+		util.Fail(c, "参数格式有误", gin.H{
 			"param": challengeId,
 		})
 		return
 	}
-
 	var challenge model.Challenge
-	db.DB.Where("id = ", id).First(&challenge)
+	db.DB.Where("id = ?", id).First(&challenge)
 	if challenge.ID == 0 {
-		Fail(c, "challenge 不存在", nil)
+		util.Fail(c, "challenge 不存在", nil)
 		return
 	}
 
 	var count int64
 	db.DB.Model(&model.Box{}).Where("challenge_id = ?", id).Count(&count)
 	if count != 0 {
-		Fail(c, "删除失败，有依赖于题目的靶机", nil)
+		util.Fail(c, "删除失败，有依赖于题目的靶机", nil)
 		return
 	}
 	db.DB.Delete(&challenge)
 	log.Println("删除题目:", challenge.Title)
-	Success(c, "删除成功", nil)
+	util.Success(c, "删除成功", nil)
 }
 
 type putChallengeForm struct {
@@ -98,27 +99,27 @@ type putChallengeForm struct {
 	Title       string  `binding:"required,max=100"`
 	Desc        string  `binding:"required,max=255"`
 	Score       float64 `binding:"required"`
-	AutoRefresh bool    `binding:"required"`
-	Command     string  `binding:"required,max=255"`
+	AutoRefresh bool
+	Command     string `binding:"required,max=255"`
 }
 
 func PutChallenge(c *gin.Context) {
 	var form putChallengeForm
 	err := c.ShouldBind(&form)
 	if err != nil {
-		Fail(c, "参数绑定错误", nil)
+		util.Fail(c, "参数绑定错误", nil)
 		return
 	}
 
 	if form.AutoRefresh && form.Command == "" {
-		Fail(c, "缺少刷新flag的命令", nil)
+		util.Fail(c, "缺少刷新flag的命令", nil)
 		return
 	}
 
 	var challenge model.Challenge
 	db.DB.Where("id = ?", form.ChallengeId).First(&challenge)
 	if challenge.ID == 0 {
-		Fail(c, "challenge不存在", nil)
+		util.Fail(c, "challenge不存在", nil)
 		return
 	}
 
@@ -131,16 +132,43 @@ func PutChallenge(c *gin.Context) {
 
 	db.DB.Save(&challenge)
 	log.Println("修改题目:", challenge.Title)
-	Success(c, "成功", gin.H{
+	util.Success(c, "成功", gin.H{
 		"challenge": challenge,
 	})
+}
+
+func Visible(c *gin.Context) {
+	challengeId := c.Query("challengeId")
+	id, err := strconv.Atoi(challengeId)
+	if err != nil {
+		util.Fail(c, "参数错误", gin.H{
+			"challengeId": id,
+		})
+		return
+	}
+
+	var challenge model.Challenge
+
+	db.DB.Model(&model.Challenge{}).Where("id = ?", id).First(&challenge)
+	if challenge.ID == 0 {
+		util.Fail(c, "队伍不存在", nil)
+	}
+	err = db.DB.Model(&model.Challenge{}).Where("id = ?", id).
+		Update("visible", !challenge.Visible).Error
+
+	if err != nil {
+		util.Error(c, "设置失败", nil)
+		return
+	}
+	util.Success(c, "设置成功", nil)
+	return
 }
 
 func SetVisible(c *gin.Context) {
 	challengeId := c.Query("challengeId")
 	id, err := strconv.Atoi(challengeId)
 	if err != nil {
-		Fail(c, "参数错误", gin.H{
+		util.Fail(c, "参数错误", gin.H{
 			"challengeId": id,
 		})
 		return
@@ -149,17 +177,18 @@ func SetVisible(c *gin.Context) {
 	err = db.DB.Model(&model.Challenge{}).Where("id = ?", id).
 		Update("visible", true).Error
 	if err != nil {
-		Fail(c, "设置失败", nil)
+		util.Fail(c, "设置失败", nil)
 		return
 	}
-	Success(c, "设置成功", nil)
+	db.DB.Model(&model.GameBox{}).Where("challenge_id = ?", id).Update("visible", true)
+	util.Success(c, "设置成功", nil)
 }
 
 func SetUnVisible(c *gin.Context) {
 	challengeId := c.Query("challengeId")
 	id, err := strconv.Atoi(challengeId)
 	if err != nil {
-		Fail(c, "参数错误", gin.H{
+		util.Fail(c, "参数错误", gin.H{
 			"challengeId": id,
 		})
 		return
@@ -168,8 +197,9 @@ func SetUnVisible(c *gin.Context) {
 	err = db.DB.Model(&model.Challenge{}).Where("id = ?", id).
 		Update("visible", false).Error
 	if err != nil {
-		Fail(c, "设置失败", nil)
+		util.Fail(c, "设置失败", nil)
 		return
 	}
-	Success(c, "设置成功", nil)
+	db.DB.Model(&model.GameBox{}).Where("challenge_id = ?", id).Update("visible", false)
+	util.Success(c, "设置成功", nil)
 }

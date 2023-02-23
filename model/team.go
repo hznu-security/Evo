@@ -10,3 +10,7 @@ type Team struct {
 	Score float64 `gorm:"not null"`
 	Token string  `gorm:"type:text;not null"`
 }
+
+func (Team) TableName() string {
+	return "teams"
+}

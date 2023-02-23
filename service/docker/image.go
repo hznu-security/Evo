@@ -14,7 +14,6 @@ import (
 	"os"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
 )
 
 var (
@@ -24,7 +23,7 @@ var (
 // BuildImage 构建镜像
 func BuildImage(path string, dockerfile string, name string) ([]byte, error) {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts()
+	cli, err := getClient()
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +58,7 @@ type Image struct {
 
 func ListImage() ([]Image, error) {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts()
+	cli, err := getClient()
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +80,7 @@ func ListImage() ([]Image, error) {
 // RemoveImage 删除镜像
 func RemoveImage(id string) error {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts()
+	cli, err := getClient()
 	if err != nil {
 		return err
 	}

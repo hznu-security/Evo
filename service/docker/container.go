@@ -15,12 +15,11 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 )
 
 func StartContainer(image, name string, portMap *nat.PortMap) error {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts()
+	cli, err := getClient()
 	if err != nil {
 		return err
 	}
@@ -49,7 +48,7 @@ func StartContainer(image, name string, portMap *nat.PortMap) error {
 // SetContainerSSH 给容器设置ssh账号密码
 func SetContainerSSH(container, user, pwd string) error {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts()
+	cli, err := getClient()
 	if err != nil {
 		return err
 	}
@@ -80,7 +79,7 @@ func SetContainerSSH(container, user, pwd string) error {
 // RemoveContainer kill并删除容器
 func RemoveContainer(name string) error {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts()
+	cli, err := getClient()
 	if err != nil {
 		return err
 	}
@@ -97,7 +96,7 @@ func RemoveContainer(name string) error {
 // ResetContainer 重置容器,会将容器重启并设置ssh密码
 func ResetContainer(name string) (pwd string, err error) {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts()
+	cli, err := getClient()
 	if err != nil {
 		return "", err
 	}
@@ -119,7 +118,7 @@ func ResetContainer(name string) (pwd string, err error) {
 // ContainerExec 通过exec在容器中执行命令
 func ContainerExec(container string, command string) (types.ContainerExecInspect, error) {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts()
+	cli, err := getClient()
 	if err != nil {
 		return types.ContainerExecInspect{}, err
 	}
@@ -160,7 +159,7 @@ func ParsePort(port string) nat.PortMap {
 
 func GetIp(name string) (string, error) {
 	ctx := context.Background()
-	cli, _ := client.NewClientWithOpts()
+	cli, _ := getClient()
 	res, err := cli.ContainerInspect(ctx, name)
 	if err != nil {
 		return "", err

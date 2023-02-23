@@ -9,14 +9,17 @@ import (
 	"Evo/config"
 	"Evo/db"
 	"Evo/router"
+	"Evo/starry"
 	"log"
 )
 
 func main() {
 	config.InitConfig()
 	db.InitDB()
+	starry.Init()
 	r := router.InitRouter()
-
+	
+	
 	err := r.Run(":8080")
 	if err != nil {
 		log.Println(err.Error())

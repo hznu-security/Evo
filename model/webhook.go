@@ -9,3 +9,7 @@ type Webhook struct {
 	Time    uint    `binding:"required"` //重试次数
 	Timeout float64 `binding:"required"` //时限 秒
 }
+
+func (Webhook) TableName() string {
+	return "webhooks"
+}
