@@ -52,7 +52,11 @@ var DOWN_SCORE uint
 // ATTACK_SCORE 被攻击扣分
 var ATTACK_SCORE uint
 
-//InitConfig 初始化配置
+var StartTime time.Time
+
+var EndTime time.Time
+
+// InitConfig 初始化配置
 func InitConfig() {
 	workDir, _ := os.Getwd()
 	viper.SetConfigName("config")
@@ -81,6 +85,18 @@ func InitConfig() {
 	if err != nil {
 		panic("加载比赛时间失败")
 	}
+	StartTime = start
+	EndTime = end
 	processing := uint(start.Sub(end).Minutes())
 	GAME_ROUND = processing / ROUND_TIME
+}
+
+// 返回本轮剩余时间 返回秒数
+func GetRoundRemainTime() float64 {
+	return StartTime.Add(time.Duration(ROUND_NOW*ROUND_TIME) * time.Minute).Sub(time.Now()).Seconds()
+}
+
+// 返回比赛剩余时间  返回秒数
+func GetRestTime() float64 {
+	return EndTime.Sub(StartTime).Seconds()
 }

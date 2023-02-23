@@ -28,8 +28,8 @@ func ResetAllScore() error {
 	for _, challenge := range challenges {
 		challengeMap[challenge.ID] = challenge.Score
 	}
-	var boxes []model.Box
-	db.DB.Where("is_attacked = ? OR is_down = ?", true, true).Find(&boxes)
+	var boxes []model.GameBox
+	db.DB.Model(model.GameBox{}).Where("is_attacked = ? OR is_down = ?", true, true).Find(&boxes)
 	for i := 0; i < len(boxes); i++ {
 		boxes[i].Score = challengeMap[boxes[i].ChallengeID]
 		boxes[i].IsDown = false
@@ -41,4 +41,3 @@ func ResetAllScore() error {
 	}
 	return nil
 }
-

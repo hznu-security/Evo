@@ -10,6 +10,7 @@ import (
 	"Evo/auth"
 	"Evo/db"
 	"Evo/model"
+	"Evo/util"
 	"errors"
 	"log"
 
@@ -27,31 +28,31 @@ func AdminLogin(c *gin.Context) {
 	err := c.ShouldBind(&form)
 	if err != nil {
 		log.Println(err.Error())
-		Fail(c, "参数绑定失败", nil)
+		util.Fail(c, "参数绑定失败", nil)
 	}
 
 	var admin model.Admin
 	if err = db.DB.Where("name = ?", form.Name).First(&admin).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			Fail(c, "管理员不存在", nil)
+			util.Fail(c, "管理员不存在", nil)
 			return
 		} else {
-			Error(c, "服务端错误", nil)
+			util.Error(c, "服务端错误", nil)
 			log.Println(err.Error())
 			return
 		}
 	}
 	if !auth.Cmp(admin.Pwd, form.Pwd) {
-		Fail(c, "密码错误", nil)
+		util.Fail(c, "密码错误", nil)
 		return
 	}
 	token, err := auth.ReleaseToken(admin.ID, auth.ADMIN)
 	if err != nil {
 		log.Println(err.Error())
-		Error(c, "服务端错误", nil)
+		util.Error(c, "服务端错误", nil)
 		return
 	}
-	Success(c, "登陆成功", gin.H{
+	util.Success(c, "登陆成功", gin.H{
 		"token": token,
 	})
 	log.Println(admin.Name, "login")

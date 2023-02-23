@@ -3,6 +3,7 @@ package router
 import (
 	"Evo/ctrl"
 	"Evo/middleware"
+	"Evo/starry"
 	"github.com/gin-gonic/gin"
 )
 
@@ -10,11 +11,14 @@ func InitRouter() *gin.Engine {
 	r := gin.Default()
 	// 静态文件服务
 	r.Static("/upload", "./upload")
+
+	r.GET("/websocket", starry.ServeWebsocket)
+
 	// 登录外所有接口都通过中间件进行验证
 	manager := r.Group("/manager")
 	{
 		manager.POST("/login", ctrl.AdminLogin)
-		manager.Use(middleware.AuthMW())
+		//manager.Use(middleware.AuthMW())
 		account := manager.Group("/account")
 		{
 			account.POST("", ctrl.PostAccount)
@@ -78,20 +82,23 @@ func InitRouter() *gin.Engine {
 			image.GET("", ctrl.GetImage)
 			image.DELETE("", ctrl.DelImage)
 		}
-		//ip := manager.Group("/ip")
-		//{
-		//	ip.GET("/interface", ctrl.GetInterfaces)
-		//	ip.GET("", ctrl.GetIpAddress)
-		//	ip.POST("", ctrl.PostIpAddress)
-		//	ip.DELETE("", ctrl.DelIpAddress)
-		//}
+		starryGroup := manager.Group("/starry")
+		{
+			starryGroup.POST("/attack", starry.Attack)
+			starryGroup.POST("/rank", starry.Rank)
+			starryGroup.POST("/status", starry.Status)
+			starryGroup.POST("/time", starry.Time)
+			starryGroup.POST("/clear", starry.Clear)
+			starryGroup.POST("/clearall", starry.ClearAll)
+			starryGroup.POST("/round", starry.Round)
+		}
 	}
 
 	team := r.Group("/team") //    8080:/team/.....   上下两个team不一样
 	team.POST("/login", ctrl.TeamLogin)
 	{
 		team.POST("/flag", middleware.SubmitMW(), middleware.AuthMW(), ctrl.SubmitFlag) // 比赛结束后,不允许提交
-		team.Use(middleware.AuthMW())
+		//team.Use(middleware.AuthMW())
 		team.GET("/info", ctrl.Info)
 		team.GET("/rank", ctrl.GetRank)
 		team.GET("/notification", ctrl.GetNotification) //选手端获取通知

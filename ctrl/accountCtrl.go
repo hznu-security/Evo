@@ -10,6 +10,7 @@ import (
 	"Evo/auth"
 	"Evo/db"
 	"Evo/model"
+	"Evo/util"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -22,7 +23,7 @@ func PostAccount(c *gin.Context) {
 	var form model.Admin
 	err := c.ShouldBind(&form)
 	if err != nil {
-		Fail(c, "参数绑定错误", gin.H{
+		util.Fail(c, "参数绑定错误", gin.H{
 			"admin": form,
 		})
 		return
@@ -31,7 +32,7 @@ func PostAccount(c *gin.Context) {
 	var admin model.Admin
 	db.DB.Where("name = ?", form.Name).First(&admin)
 	if admin.ID != 0 {
-		Fail(c, "账号已存在", gin.H{
+		util.Fail(c, "账号已存在", gin.H{
 			"admin": form,
 		})
 	}
@@ -41,7 +42,7 @@ func PostAccount(c *gin.Context) {
 	db.DB.Create(&admin)
 	admin.Pwd = ""
 	log.Println("Add admin:", admin.Name)
-	Success(c, "创建成功", nil)
+	util.Success(c, "创建成功", nil)
 
 }
 
@@ -56,7 +57,7 @@ func PutAccount(c *gin.Context) {
 	var form putAccountForm
 	err := c.ShouldBind(&form)
 	if err != nil {
-		Fail(c, "参数绑定失败", gin.H{
+		util.Fail(c, "参数绑定失败", gin.H{
 			"admin": form,
 		})
 		return
@@ -64,7 +65,7 @@ func PutAccount(c *gin.Context) {
 	var admin model.Admin
 	db.DB.Select([]string{"id","name","pwd"}).First(&admin, form.AdminId)
 	if admin.ID == 0 {
-		Fail(c, "账号不存在", nil)
+		util.Fail(c, "账号不存在", nil)
 		return
 	}
 	admin.Name = form.Name
@@ -73,18 +74,18 @@ func PutAccount(c *gin.Context) {
 	if err != nil {
 		// 判断是不是查不到
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			Fail(c, "账号不存在", gin.H{
+			util.Fail(c, "账号不存在", gin.H{
 				"admin": form,
 			})
 		} else {
 			log.Println(err)
-			Error(c, "修改失败", nil)
+			util.Error(c, "修改失败", nil)
 		}
 		return
 	}
 	log.Println("modify account:", admin.Name)
 	admin.Pwd = ""
-	Success(c, "修改成功", gin.H{
+	util.Success(c, "修改成功", gin.H{
 		"admin": admin,
 	})
 }
@@ -95,7 +96,7 @@ func DelAccount(c *gin.Context) {
 	id, err := strconv.Atoi(adminId)
 
 	if err != nil {
-		Fail(c, "参数错误", gin.H{
+		util.Fail(c, "参数错误", gin.H{
 			"adminId": adminId,
 		})
 		return
@@ -114,17 +115,17 @@ func DelAccount(c *gin.Context) {
 	})
 	if err == nil {
 		log.Println("delete account:", admin.Name)
-		Success(c, "success", nil)
+		util.Success(c, "success", nil)
 		return
 	} else {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			Fail(c, "账号不存在", gin.H{
+			util.Fail(c, "账号不存在", gin.H{
 				"adminId": adminId,
 			})
 			return
 		} else {
 			log.Println(err)
-			Error(c, "删除失败", gin.H{
+			util.Error(c, "删除失败", gin.H{
 				"adminId": adminId,
 			})
 			return
@@ -137,7 +138,7 @@ func GetAccount(c *gin.Context) {
 	admins := make([]model.Admin, 0)
 	db.DB.Select([]string{"id","created_at", "name"}).Find(&admins)
 
-	Success(c, "success", gin.H{
+	util.Success(c, "success", gin.H{
 		"admins": admins,
 	})
 }

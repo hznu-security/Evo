@@ -9,6 +9,7 @@ package ctrl
 import (
 	"Evo/db"
 	"Evo/model"
+	"Evo/util"
 	"github.com/gin-gonic/gin"
 	"log"
 	"strconv"
@@ -19,7 +20,7 @@ func PostNotice(c *gin.Context) {
 	var notice model.Notification
 	err := c.ShouldBind(&notice)
 	if err != nil {
-		Fail(c, "参数错误", gin.H{
+		util.Fail(c, "参数错误", gin.H{
 			"notice": notice,
 		})
 		return
@@ -28,11 +29,11 @@ func PostNotice(c *gin.Context) {
 	err = db.DB.Create(&notice).Error
 	if err != nil {
 		log.Println(err)
-		Error(c, "插入失败", nil)
+		util.Error(c, "插入失败", nil)
 		return
 	}
 
-	Success(c, "success", gin.H{
+	util.Success(c, "success", gin.H{
 		"notification": notice,
 	})
 }
@@ -48,7 +49,7 @@ func PutNotice(c *gin.Context) {
 	var form putNoticeForm
 	err := c.ShouldBind(&form)
 	if err != nil {
-		Fail(c, "参数绑定错误", gin.H{
+		util.Fail(c, "参数绑定错误", gin.H{
 			"notification": form,
 		})
 		return
@@ -57,7 +58,7 @@ func PutNotice(c *gin.Context) {
 	var notice model.Notification
 	db.DB.Where("id = ?", form.NotificationId).First(&notice)
 	if notice.ID == 0 {
-		Fail(c, "通知不存在", gin.H{
+		util.Fail(c, "通知不存在", gin.H{
 			"notificationId": form.NotificationId,
 		})
 		return
@@ -65,7 +66,7 @@ func PutNotice(c *gin.Context) {
 	notice.Title = form.Title
 	notice.Content = form.Content
 	db.DB.Save(&notice)
-	Success(c, "修改成功", gin.H{
+	util.Success(c, "修改成功", gin.H{
 		"notification": notice,
 	})
 }
@@ -74,7 +75,7 @@ func PutNotice(c *gin.Context) {
 func GetNotice(c *gin.Context) {
 	notices := make([]model.Notification, 0)
 	db.DB.Find(&notices)
-	Success(c, "success", gin.H{
+	util.Success(c, "success", gin.H{
 		"notifications": notices,
 	})
 }
@@ -84,7 +85,7 @@ func DelNotice(c *gin.Context) {
 	noticeId := c.Query("notificationId")
 	id, err := strconv.Atoi(noticeId)
 	if err != nil {
-		Fail(c, "参数错误", gin.H{
+		util.Fail(c, "参数错误", gin.H{
 			"noticeId": noticeId,
 		})
 		return
@@ -92,11 +93,11 @@ func DelNotice(c *gin.Context) {
 	var notice model.Notification
 	db.DB.First(&notice, id)
 	if notice.ID == 0 {
-		Fail(c, "通知不存在", gin.H{
+		util.Fail(c, "通知不存在", gin.H{
 			"notificationId": id,
 		})
 		return
 	}
 	db.DB.Delete(&notice)
-	Success(c, "success", nil)
+	util.Success(c, "success", nil)
 }

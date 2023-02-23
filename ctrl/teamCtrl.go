@@ -11,6 +11,7 @@ import (
 	"Evo/config"
 	"Evo/db"
 	"Evo/model"
+	"Evo/starry"
 	"Evo/util"
 	"errors"
 	"github.com/gin-gonic/gin"
@@ -32,20 +33,20 @@ func TeamLogin(c *gin.Context) {
 	err := c.ShouldBind(&form)
 	if err != nil {
 		log.Println(err.Error())
-		Error(c, "绑定错误", nil)
+		util.Error(c, "绑定错误", nil)
 	}
 	var team model.Team
 	if err = db.DB.Where("name = ?", form.Name).First(&team).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			Fail(c, "队伍不存在", nil)
+			util.Fail(c, "队伍不存在", nil)
 			return
 		} else {
-			Error(c, "服务端错误", nil)
+			util.Error(c, "服务端错误", nil)
 			return
 		}
 	}
 	if team.Pwd != form.Pwd {
-		Fail(c, "密码错误", nil)
+		util.Fail(c, "密码错误", nil)
 		return
 	}
 	token, err := auth.ReleaseToken(team.ID, auth.TEAM)
@@ -53,7 +54,7 @@ func TeamLogin(c *gin.Context) {
 		log.Println(err.Error())
 	}
 	db.DB.Model(model.Team{}).Where("id = ?", team.ID).Update("token", token)
-	Success(c, "登陆成功", gin.H{
+	util.Success(c, "登陆成功", gin.H{
 		"token": token,
 		"id":    team.ID,
 	})
@@ -68,11 +69,11 @@ func SubmitFlag(c *gin.Context) {
 	var form flagFrom
 	err := c.ShouldBind(&form)
 	if err != nil {
-		Fail(c, "提交失败", nil)
+		util.Fail(c, "提交失败", nil)
 	}
 	teamId, isExist := c.Get("teamId") // 获取鉴权中间件放进去的teamId
 	if !isExist {
-		Fail(c, "队伍不存在", nil)
+		util.Fail(c, "队伍不存在", nil)
 		return
 	}
 
@@ -80,7 +81,7 @@ func SubmitFlag(c *gin.Context) {
 	db.DB.Where("round = ? AND flag = ", config.ROUND_NOW, form.flag).First(&flag)
 	// flag不正确,返回
 	if flag.ID == 0 {
-		Success(c, "flag不正确", nil)
+		util.Success(c, "flag不正确", nil)
 		return
 	}
 
@@ -91,15 +92,15 @@ func SubmitFlag(c *gin.Context) {
 	// flag正确,判断是否提交过了
 	var attack model.Attack
 	attacker := teamId.(uint)
-	db.DB.Where("attacker = ? AND round = ? AND box_id = ?", attacker, config.ROUND_NOW, flag.BoxId).First(&attack)
+	db.DB.Where("attacker = ? AND round = ? AND box_id = ?", attacker, config.ROUND_NOW, flag.GameBoxId).First(&attack)
 	if attack.ID != 0 {
-		Success(c, "重复提交", nil)
+		util.Success(c, "重复提交", nil)
 		return
 	}
 
 	// flag正确
-	var box model.Box
-	db.DB.Where("id = ?", flag.BoxId).First(&box)
+	var box model.GameBox
+	db.DB.Where("id = ?", flag.GameBoxId).First(&box)
 	if box.IsAttacked { // box已经被攻击过了
 
 	}
@@ -108,9 +109,8 @@ func SubmitFlag(c *gin.Context) {
 	box.Score -= float64(config.ATTACK_SCORE)
 	db.DB.Save(&box) // 更新靶机状态
 
-	/**
-	这里空一段，给大屏发消息的代码
-	*/
+	// 给大屏发消息
+	starry.SendAttack(attacker, flag.TeamId)
 
 	attack.Attacker = attacker
 	attack.Round = config.ROUND_NOW
@@ -142,7 +142,7 @@ func Info(c *gin.Context) {
 		Token: teamInfo.Token,
 		Boxes: box,
 	}
-	Success(c, "success", gin.H{
+	util.Success(c, "success", gin.H{
 		"info": res,
 	})
 }
@@ -155,7 +155,7 @@ func GetRank(c *gin.Context) {
 	sort.Slice(team, func(i, j int) bool {
 		return team[i].Score > team[j].Score
 	})
-	Success(c, "success", gin.H{
+	util.Success(c, "success", gin.H{
 		"rank": team,
 	})
 }
@@ -164,7 +164,7 @@ func GetRank(c *gin.Context) {
 func GetNotification(c *gin.Context) {
 	var notifications []model.Notification
 	db.DB.Find(&notifications)
-	Success(c, "success", gin.H{
+	util.Success(c, "success", gin.H{
 		"notifications": notifications,
 	})
 }
@@ -174,17 +174,17 @@ func PostTeam(c *gin.Context) {
 	var team model.Team
 	// 绑定参数
 	if err := c.ShouldBind(&team); err != nil {
-		Fail(c, "绑定错误", nil)
+		util.Fail(c, "绑定错误", nil)
 	}
 
 	if team.Name == "" {
-		Fail(c, "参数错误", nil)
+		util.Fail(c, "参数错误", nil)
 		return
 	}
 
 	db.DB.Where("name = ?", team.Name).First(&team)
 	if team.ID != 0 {
-		Fail(c, "队伍已存在", nil)
+		util.Fail(c, "队伍已存在", nil)
 		return
 	}
 
@@ -192,10 +192,10 @@ func PostTeam(c *gin.Context) {
 	team.Pwd = auth.NewPwd()
 	err := db.DB.Create(&team).Error
 	if err != nil {
-		Fail(c, "添加失败", nil)
+		util.Fail(c, "添加失败", nil)
 		log.Println(err.Error())
 	} else {
-		Success(c, "添加成功", gin.H{
+		util.Success(c, "添加成功", gin.H{
 			"team": team,
 		})
 		log.Println("Add Team", team.Name)
@@ -214,14 +214,14 @@ func PutTeam(c *gin.Context) {
 	var form Form
 	err := c.ShouldBind(&form)
 	if err != nil {
-		Fail(c, "参数错误", nil)
+		util.Fail(c, "参数错误", nil)
 		return
 	}
 
 	var team model.Team
 	db.DB.Where("id = ?", form.TeamId).First(&team)
 	if team.ID == 0 {
-		Fail(c, "队伍不存在", nil)
+		util.Fail(c, "队伍不存在", nil)
 		return
 	}
 
@@ -229,10 +229,10 @@ func PutTeam(c *gin.Context) {
 	team.Logo = form.Logo
 	if err := db.DB.Save(&team).Error; err != nil {
 		log.Println(err.Error())
-		Fail(c, "保存失败", nil)
+		util.Fail(c, "保存失败", nil)
 		return
 	}
-	Success(c, "修改成功", gin.H{
+	util.Success(c, "修改成功", gin.H{
 		"team": team,
 	})
 }
@@ -241,7 +241,7 @@ func PutTeam(c *gin.Context) {
 func GetTeam(c *gin.Context) {
 	teams := make([]model.Team, 0)
 	db.DB.Find(&teams) //这里采用软删除，gorm自动忽视软删除过的内容
-	Success(c, "查询成功", gin.H{
+	util.Success(c, "查询成功", gin.H{
 		"teams": teams,
 	})
 }
@@ -251,7 +251,7 @@ func DelTeam(c *gin.Context) {
 	teamIdStr := c.Query("teamId")
 	teamId, err := strconv.Atoi(teamIdStr)
 	if err != nil {
-		Error(c, "参数错误", gin.H{
+		util.Error(c, "参数错误", gin.H{
 			"teamId": teamId,
 		})
 		log.Println(err.Error())
@@ -270,18 +270,18 @@ func DelTeam(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			Fail(c, "队伍不存在", gin.H{
+			util.Fail(c, "队伍不存在", gin.H{
 				"teamId": teamId,
 			})
 			return
 		} else {
 			log.Println(err)
-			Error(c, "删除失败", nil)
+			util.Error(c, "删除失败", nil)
 		}
 		return
 	}
 	log.Printf("删除队伍 %s", team.Name)
-	Success(c, "删除成功", nil)
+	util.Success(c, "删除成功", nil)
 }
 
 // ResetPwd 重置队伍密码
@@ -289,12 +289,12 @@ func ResetPwd(c *gin.Context) {
 	// 获得teamId
 	teamIdStr := c.Query("teamId")
 	if teamIdStr == "" {
-		Fail(c, "参数错误", nil)
+		util.Fail(c, "参数错误", nil)
 		return
 	}
 	teamId, err := strconv.Atoi(teamIdStr)
 	if err != nil {
-		Error(c, "服务端错误", nil)
+		util.Error(c, "服务端错误", nil)
 		log.Println(err.Error())
 		return
 	}
@@ -303,13 +303,13 @@ func ResetPwd(c *gin.Context) {
 	var team model.Team
 	db.DB.Where("id = ?", teamId).First(&team)
 	if team.ID == 0 {
-		Fail(c, "队伍不存在", nil)
+		util.Fail(c, "队伍不存在", nil)
 		return
 	}
 	team.Pwd = auth.NewPwd()
 	db.DB.Save(&team)
 	log.Printf("队伍 %s 重置密码", team.Name)
-	Success(c, "重置成功", gin.H{
+	util.Success(c, "重置成功", gin.H{
 		"pwd": team.Pwd,
 	})
 }
@@ -319,27 +319,27 @@ func UploadLogo(c *gin.Context) {
 
 	logo, err := c.FormFile("logo")
 	if err != nil {
-		Fail(c, "上传失败", nil)
+		util.Fail(c, "上传失败", nil)
 		log.Println(err)
 		return
 	}
 	ext := filepath.Ext(logo.Filename)
 	if ext != ".png" && ext != ".jpg" {
-		Fail(c, "图片格式不正确", nil)
+		util.Fail(c, "图片格式不正确", nil)
 		return
 	}
 
 	logoPath := viper.GetString("logo.path")
 	err = util.TestAndMake(logoPath)
 	if err != nil {
-		Error(c, "上传失败", nil)
+		util.Error(c, "上传失败", nil)
 		log.Println(err)
 		return
 	}
 	dst := util.GetRandomStr(10, logoPath, ext)
 	err = c.SaveUploadedFile(logo, dst)
 	if err != nil {
-		Error(c, "上传失败", nil)
+		util.Error(c, "上传失败", nil)
 		log.Println(err)
 		return
 	}
@@ -349,7 +349,7 @@ func UploadLogo(c *gin.Context) {
 	if teamId != "" {
 		db.DB.Model(model.Team{}).Where("id = ?", teamId).Update("logo", dst)
 	}
-	Success(c, "success", gin.H{
+	util.Success(c, "success", gin.H{
 		"path": dst,
 	})
 }

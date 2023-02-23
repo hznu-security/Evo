@@ -8,6 +8,7 @@ package ctrl
 
 import (
 	"Evo/service/docker"
+	"Evo/util"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -20,19 +21,19 @@ func PostImage(c *gin.Context) {
 	// 解析表单
 	file, err := c.FormFile("image")
 	if err != nil {
-		Fail(c, "上传失败", nil)
+		util.Fail(c, "上传失败", nil)
 		return
 	}
 	name := c.PostForm("name")
 
 	if name == "" {
-		Fail(c, "缺少参数", nil)
+		util.Fail(c, "缺少参数", nil)
 		return
 	}
 
 	// 检查字段是否过长
 	if len(name) > 200 {
-		Fail(c, "字段过长", gin.H{
+		util.Fail(c, "字段过长", gin.H{
 			"name": name,
 		})
 	}
@@ -41,7 +42,7 @@ func PostImage(c *gin.Context) {
 	dst := imagePath + name + ".tar"
 	err = c.SaveUploadedFile(file, dst)
 	if err != nil {
-		Error(c, "保存失败", nil)
+		util.Error(c, "保存失败", nil)
 		log.Println(err.Error())
 		return
 	}
@@ -49,18 +50,18 @@ func PostImage(c *gin.Context) {
 	if err != nil {
 		log.Println(err.Error())
 		if err == docker.ErrRead {
-			Success(c, "读取异常", nil)
+			util.Success(c, "读取异常", nil)
 			return
 		} else {
 			log.Println(err)
-			Fail(c, "镜像构建失败", gin.H{
+			util.Fail(c, "镜像构建失败", gin.H{
 				"error": err,
 				"resp":  string(resp),
 			})
 			return
 		}
 	}
-	Success(c, "", gin.H{
+	util.Success(c, "", gin.H{
 		"process": string(resp),
 	})
 }
@@ -70,10 +71,10 @@ func GetImage(c *gin.Context) {
 	images, err := docker.ListImage()
 	if err != nil {
 		log.Println(err.Error())
-		Error(c, "出错了", nil)
+		util.Error(c, "出错了", nil)
 		return
 	}
-	Success(c, "成功", gin.H{
+	util.Success(c, "成功", gin.H{
 		"images": images,
 	})
 }
@@ -83,11 +84,11 @@ func DelImage(c *gin.Context) {
 	err := docker.RemoveImage(imageId)
 	if err != nil {
 		log.Println(err.Error())
-		Error(c, "删除失败", gin.H{
+		util.Error(c, "删除失败", gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
 	log.Println("删除镜像", imageId)
-	Success(c, "成功", nil)
+	util.Success(c, "成功", nil)
 }

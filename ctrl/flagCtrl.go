@@ -10,6 +10,7 @@ import (
 	"Evo/db"
 	"Evo/model"
 	"Evo/service/game"
+	"Evo/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -22,7 +23,7 @@ func PostFlag(c *gin.Context) {
 	var form flagFrom
 	err := c.ShouldBind(&form)
 	if err != nil {
-		Fail(c, "参数有误", nil)
+		util.Fail(c, "参数有误", nil)
 		return
 	}
 	flag := model.Flag{
@@ -30,17 +31,17 @@ func PostFlag(c *gin.Context) {
 		ChallengeID: form.ChallengeID,
 	}
 	db.DB.Save(&flag)
-	Success(c, "success", nil)
+	util.Success(c, "success", nil)
 }
 
 // GenerateFlag 生成flag,针对awd题目
 func GenerateFlag(c *gin.Context) {
 	err := game.GenerateFlag()
 	if err != nil {
-		Error(c, "生成flag失败", nil)
+		util.Error(c, "生成flag失败", nil)
 		return
 	}
-	Success(c, "生成flag成功", nil)
+	util.Success(c, "生成flag成功", nil)
 }
 
 // ExportFlag 导出flag

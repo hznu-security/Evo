@@ -9,6 +9,7 @@ package ctrl
 import (
 	"Evo/db"
 	"Evo/model"
+	"Evo/util"
 	"github.com/gin-gonic/gin"
 	"log"
 	"strconv"
@@ -18,14 +19,14 @@ func PostWebhook(c *gin.Context) {
 	var form model.Webhook
 	err := c.ShouldBind(&form)
 	if err != nil {
-		Fail(c, "参数绑定失败", nil)
+		util.Fail(c, "参数绑定失败", nil)
 		return
 	}
 
 	var webhook model.Webhook
 	db.DB.Where("url = ?", form.Url).First(&webhook)
 	if webhook.ID != 0 {
-		Fail(c, "webhook已存在", gin.H{
+		util.Fail(c, "webhook已存在", gin.H{
 			"url": form.Url,
 		})
 		return
@@ -35,11 +36,11 @@ func PostWebhook(c *gin.Context) {
 	err = db.DB.Create(&webhook).Error
 	if err != nil {
 		log.Println(err)
-		Error(c, "创建出错", nil)
+		util.Error(c, "创建出错", nil)
 		return
 	}
 	log.Println("添加webhook:", webhook)
-	Success(c, "添加成功", gin.H{
+	util.Success(c, "添加成功", gin.H{
 		"webhook": webhook,
 	})
 }
@@ -56,7 +57,7 @@ func PutWebhook(c *gin.Context) {
 	var form putWebhookForm
 	err := c.ShouldBind(&form)
 	if err != nil {
-		Fail(c, "参数绑定有误", gin.H{
+		util.Fail(c, "参数绑定有误", gin.H{
 			"webhook": form,
 		})
 		return
@@ -65,7 +66,7 @@ func PutWebhook(c *gin.Context) {
 	var webhook model.Webhook
 	db.DB.Where("id = ?", form.WebhookId).First(&webhook)
 	if webhook.ID == 0 {
-		Fail(c, "webhook不存在", gin.H{
+		util.Fail(c, "webhook不存在", gin.H{
 			"webhook": form,
 		})
 		return
@@ -78,19 +79,19 @@ func PutWebhook(c *gin.Context) {
 	err = db.DB.Save(&webhook).Error
 	if err != nil {
 		log.Println(err)
-		Error(c, "更新失败", gin.H{
+		util.Error(c, "更新失败", gin.H{
 			"webhook": form,
 		})
 		return
 	}
 	log.Println("修改webhook:", webhook)
-	Success(c, "success", nil)
+	util.Success(c, "success", nil)
 }
 
 func GetWebhook(c *gin.Context) {
 	webhooks := make([]model.Webhook, 0)
 	db.DB.Find(&webhooks)
-	Success(c, "success", gin.H{
+	util.Success(c, "success", gin.H{
 		"webhooks": webhooks,
 	})
 }
@@ -99,7 +100,7 @@ func DelWebhook(c *gin.Context) {
 	webhookId := c.Query("webhookId")
 	id, err := strconv.Atoi(webhookId)
 	if err != nil {
-		Fail(c, "参数有误", gin.H{
+		util.Fail(c, "参数有误", gin.H{
 			"webhookUId": webhookId,
 		})
 		return
@@ -107,12 +108,12 @@ func DelWebhook(c *gin.Context) {
 	var webhook model.Webhook
 	db.DB.Where("id = ?", id).First(&webhook)
 	if webhook.ID == 0 {
-		Fail(c, "webhook不存在", gin.H{
+		util.Fail(c, "webhook不存在", gin.H{
 			"webhookId": webhookId,
 		})
 		return
 	}
 	db.DB.Delete(&webhook)
 	log.Println("删除webhook:", id)
-	Success(c, "删除成功", nil)
+	util.Success(c, "删除成功", nil)
 }

@@ -34,7 +34,7 @@ func StartCron() error {
 	specRound := "@every" + strconv.Itoa(int(config.ROUND_TIME)) + "m"
 
 	if err != nil {
-		panic(err)
+		panic(err.Error())
 	}
 
 	startEntry, _ = cron1.AddFunc(specStart, func() {

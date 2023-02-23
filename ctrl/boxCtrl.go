@@ -15,6 +15,7 @@ import (
 	"Evo/util"
 	"encoding/json"
 	"fmt"
+	"github.com/docker/go-connections/nat"
 	"github.com/gin-gonic/gin"
 	"log"
 	"strconv"
@@ -23,12 +24,15 @@ import (
 
 // BoxForm 添加靶机
 type BoxForm struct {
-	ChallengeId uint `binding:"required"`
-	TeamId      uint `binding:"required"`
-	//Ip          string `binding:"required,max=30"`
-	Image   string `binding:"required,max=30"`
-	Port    string `binding:"required,max=100"`
-	SshUser string `json:"sshUser" binding:"required"`
+	//Port          string          `binding:"required,max=100"`
+	//ChallengeId   uint            `binding:"required"`
+
+	ChallengePort map[uint]string `binding:"required"` // 题目id和题目的port
+	TeamId        uint            `binding:"required"`
+	Image         string          `binding:"required,max=100"` // 选择容器的名字
+	SshPort       string          `json:"sshPort" binding:"required"`
+	SshUser       string          `json:"sshUser" binding:"required"`
+	SshPwd        string          `json:"sshPwd" binding:"required"`
 }
 
 func PostBox(c *gin.Context) {
@@ -36,81 +40,115 @@ func PostBox(c *gin.Context) {
 	var boxForm BoxForm
 	if err := c.ShouldBind(&boxForm); err != nil {
 		log.Println(err)
-		Fail(c, "参数绑定失败", nil)
+		util.Fail(c, "参数绑定失败", nil)
 		return
 	}
 
+	// 检查一遍
 	var newBox model.Box
-	db.DB.Where("challenge_id = ? and team_id = ?", boxForm.ChallengeId, boxForm.TeamId).First(&newBox)
-	if newBox.ID != 0 {
-		Fail(c, "靶机已存在", nil)
-		return
-	}
-
 	var challenge model.Challenge
-	db.DB.Where("id = ?", boxForm.ChallengeId).First(&challenge)
-	if challenge.ID == 0 {
-		Fail(c, "队伍不存在", nil)
-		return
+	portMap := make(nat.PortMap)
+
+	cNameBuilder := strings.Builder{}
+
+	var gameBoxes []model.GameBox
+
+	for challengeId, port := range boxForm.ChallengePort {
+		db.DB.Where("challenge_id = ? and team_id = ?", challengeId, boxForm.TeamId).First(&newBox)
+		if newBox.ID != 0 {
+			util.Fail(c, fmt.Sprintf("靶机已存在,队伍:%v 题目:%v", boxForm.TeamId, challengeId), nil)
+			return
+		}
+		db.DB.Where("id = ?", challengeId).First(&challenge)
+		if challenge.ID == 0 {
+			util.Fail(c, fmt.Sprintf("题目:%v不存在", challengeId), nil)
+			return
+		}
+		// 解析port   port形式:8080:8080,9090:9090
+		pMap := docker.ParsePort(port)
+
+		gameBoxPort := ""
+
+		for k, v := range pMap {
+			portMap[k] = v
+			gameBoxPort += string(k)
+			gameBoxPort = gameBoxPort + ","
+		}
+		cNameBuilder.WriteString("C")
+		cNameBuilder.WriteRune(rune(challengeId))
+
+		gameBoxes = append(gameBoxes, model.GameBox{
+			TeamId:  boxForm.TeamId,
+			Name:    challenge.Title,
+			SshPort: boxForm.SshPort,
+			SshUser: boxForm.SshUser,
+			SshPwd:  boxForm.SshPwd,
+			Port:    gameBoxPort,
+			Score:   challenge.Score,
+		})
+
 	}
+	cNameBuilder.WriteString("T")
+	cNameBuilder.WriteRune(rune(boxForm.TeamId))
 
-	portMap := docker.ParsePort(boxForm.Port)
+	cName := cNameBuilder.String()
 
-	// 容器名为题目名+队伍id
-	name := challenge.Title + strconv.Itoa(int(boxForm.TeamId))
-	// 传入镜像名，ip，网络名
-	err := docker.StartContainer(boxForm.Image, name, &portMap)
+	// 开始启动容器
+	// 传入镜像名，容器名，端口映射
+	err := docker.StartContainer(boxForm.Image, cName, &portMap)
 	if err != nil {
 		log.Println(err)
-		errr := docker.RemoveContainer(name)
-		log.Println(errr)
-		Error(c, "启动靶机失败", gin.H{
+		err := docker.RemoveContainer(cName)
+		log.Println(err)
+		util.Error(c, "启动靶机失败", gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
 
 	port, _ := json.Marshal(portMap)
-
 	sshPwd := auth.NewPwd()
 
-	newBox.ChallengeID = boxForm.ChallengeId
 	newBox.TeamId = boxForm.TeamId
-	//newBox.Ip = boxForm.Ip
-	newBox.Score = challenge.Score
 	newBox.SshUser = boxForm.SshUser
 	newBox.SshPwd = sshPwd
-	newBox.Name = name
+	newBox.Name = cName
 	newBox.Port = string(port)
-	err = docker.SetContainerSSH(name, boxForm.SshUser, sshPwd)
+	err = docker.SetContainerSSH(cName, boxForm.SshUser, sshPwd)
 	if err != nil {
 		log.Println(err)
-		err = docker.RemoveContainer(name)
+		err = docker.RemoveContainer(cName)
 		if err != nil {
 			log.Println(err)
 		}
-		Error(c, "设置ssh账号失败,请手动操作", nil)
+		util.Error(c, "设置ssh账号失败,请手动操作", nil)
 		return
 	}
-	log.Println("靶机", name, "启动")
+	log.Println("容器", cName, "启动")
 
 	err = db.DB.Create(&newBox).Error
 	if err != nil {
 		log.Println(err)
-		err = docker.RemoveContainer(name)
+		err = docker.RemoveContainer(cName)
 		if err != nil {
 			log.Println(err)
 		}
-		Error(c, "启动成功，数据库异常", nil)
+		util.Error(c, "启动成功，数据库异常", nil)
 		return
 	}
-	Success(c, "success", nil)
+
+	// 开始写入gamebox
+	for i := 0; i < len(gameBoxes); i++ {
+		gameBoxes[i].CName = cName
+	}
+
+	util.Success(c, "success", nil)
 }
 
 func GetBox(c *gin.Context) {
-	boxes := make([]model.Box, 0)
+	boxes := make([]model.GameBox, 0)
 	db.DB.Find(&boxes)
-	Success(c, "success", gin.H{
+	util.Success(c, "success", gin.H{
 		"boxes": boxes,
 	})
 }
@@ -121,19 +159,19 @@ type putBoxForm struct {
 	TeamId      uint `binding:"required"`
 }
 
-// PutBox 修改靶机信息
+// TODO
 func PutBox(c *gin.Context) {
 	var form putBoxForm
 	err := c.ShouldBind(&form)
 	if err != nil {
 		log.Println(err)
-		Fail(c, "参数绑定失败", nil)
+		util.Fail(c, "参数绑定失败", nil)
 		return
 	}
 	var box model.Box
 	db.DB.Where("id = ?", form.BoxId).First(&box)
 	if box.ID == 0 {
-		Fail(c, "靶机不存在", nil)
+		util.Fail(c, "靶机不存在", nil)
 		return
 	}
 	box.ChallengeID = form.ChallengeId
@@ -141,37 +179,32 @@ func PutBox(c *gin.Context) {
 	db.DB.Save(&box)
 
 	log.Println("修改靶机:", box.Name)
-	Success(c, "success", gin.H{
+	util.Success(c, "success", gin.H{
 		"box": box,
 	})
 }
 
-// DelBox 移除靶机
+// TODO 如果一个容器对应的最后一个gamebox被删除了，就删除这个容器
+// DelBox 移除靶机,这里不删除容器
 func DelBox(c *gin.Context) {
 	boxId := c.Query("boxId")
 	id, err := strconv.Atoi(boxId)
 	if err != nil {
-		Fail(c, "参数错误", gin.H{
+		util.Fail(c, "参数错误", gin.H{
 			"param": boxId,
 		})
 		return
 	}
-	var box model.Box
-	db.DB.Where("id = ?", id).First(&box)
-	if box.ID == 0 {
-		Fail(c, "靶机不存在", nil)
+	var gameBox model.GameBox
+	db.DB.Where("id = ?", id).First(&gameBox)
+	if gameBox.ID == 0 {
+		util.Fail(c, "靶机不存在", nil)
 		return
 	}
 
-	db.DB.Delete(&box)
-	err = docker.RemoveContainer(box.Name)
-	if err != nil {
-		log.Println(err)
-		Error(c, err.Error(), nil)
-		return
-	}
-	log.Println("删除靶机:", box.Name)
-	Success(c, "删除成功", nil)
+	db.DB.Delete(&gameBox)
+	log.Println("删除靶机:", gameBox.Name)
+	util.Success(c, "删除成功", nil)
 }
 
 // ResetBox 重置所有靶机的状态，连带分数
@@ -179,18 +212,18 @@ func ResetBox(c *gin.Context) {
 	err := box.ResetAllStatus()
 	if err != nil {
 		log.Println(err)
-		Error(c, "更新失败", nil)
+		util.Error(c, "更新失败", nil)
 		return
 	}
 
 	err = box.ResetAllScore()
 	if err != nil {
 		log.Println(err)
-		Error(c, "更新失败", nil)
+		util.Error(c, "更新失败", nil)
 		return
 	}
 	log.Println("重置靶机状态和分数")
-	Success(c, "重置成功", nil)
+	util.Success(c, "重置成功", nil)
 }
 
 // TestSSH 测试ssh链接
@@ -198,27 +231,27 @@ func TestSSH(c *gin.Context) {
 	boxId := c.Query("boxId")
 	id, err := strconv.Atoi(boxId)
 	if err != nil {
-		Fail(c, "参数格式有误", gin.H{
+		util.Fail(c, "参数格式有误", gin.H{
 			"param": boxId,
 		})
 	}
-	var box model.Box
+	var box model.GameBox
 	db.DB.Where("id = ?", id).First(&box)
 	if box.ID == 0 {
-		Fail(c, "id错误，靶机不存在", nil)
+		util.Fail(c, "id错误，靶机不存在", nil)
 		return
 	}
 
-	res, err := testSSH(box.Name, box.SshUser, box.SshPwd)
+	res, err := testSSH(box.CName, box.SshUser, box.SshPwd)
 	if err != nil {
 		log.Println(err)
-		Fail(c, "测试失败", gin.H{
+		util.Fail(c, "测试失败", gin.H{
 			"res": "whoami:" + res,
 		})
 		return
 	}
 	log.Println("测试ssh")
-	Success(c, "测试成功", gin.H{
+	util.Success(c, "测试成功", gin.H{
 		"res": "whoami:" + res,
 	})
 }
@@ -235,10 +268,10 @@ func TestSSHAll(c *gin.Context) {
 		}
 	}
 	if len(faliedBoxes) == 0 {
-		Success(c, "全部靶机ssh正常", nil)
+		util.Success(c, "全部靶机ssh正常", nil)
 		return
 	} else {
-		Fail(c, "存在靶机未通过", gin.H{
+		util.Fail(c, "存在靶机未通过", gin.H{
 			"boxes": faliedBoxes,
 		})
 		return
