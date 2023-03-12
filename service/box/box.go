@@ -9,22 +9,24 @@ package box
 import (
 	"Evo/db"
 	"Evo/model"
+	"errors"
+	"gorm.io/gorm"
 )
 
 // ResetAllStatus 重置靶机全部状态
 func ResetAllStatus() error {
 	err := db.DB.Model(&model.GameBox{}).Updates(map[string]interface{}{"is_attacked": false, "is_down": false}).Error
-	if err != nil {
+	if err != nil && !errors.Is(err, gorm.ErrMissingWhereClause) {
 		return err
 	}
 	return nil
 }
 
-// ResetAllScore 重置靶机分数
+// ResetAllScore 重置靶机分数  // TODO
 func ResetAllScore() error {
 	var challenges []model.Challenge
 	db.DB.Select([]string{"id", "score"}).Find(&challenges)
-	var challengeMap map[uint]float64
+	challengeMap := make(map[uint]float64)
 	for _, challenge := range challenges {
 		challengeMap[challenge.ID] = challenge.Score
 	}
@@ -36,7 +38,7 @@ func ResetAllScore() error {
 		boxes[i].IsAttacked = false
 	}
 	err := db.DB.Save(&boxes).Error
-	if err != nil {
+	if err != nil && !errors.Is(err, gorm.ErrEmptySlice) {
 		return err
 	}
 	return nil

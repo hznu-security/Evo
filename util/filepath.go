@@ -6,7 +6,10 @@
 
 package util
 
-import "os"
+import (
+	"log"
+	"os"
+)
 
 // TestAndMake 检验路径是否存在，不存在就创建它
 func TestAndMake(path string) error {
@@ -15,10 +18,12 @@ func TestAndMake(path string) error {
 		return nil
 	}
 	if os.IsNotExist(err) {
+		log.Printf("路径不村子啊:%s", path)
 		err := os.MkdirAll(path, 0775)
 		if err != nil {
 			return err
 		}
+		log.Printf("创建路径:%s", path)
 	}
 	return nil
 }

@@ -120,7 +120,6 @@ func SubmitFlag(c *gin.Context) {
 type info struct {
 	Team  model.Team `json:"team"`
 	Round uint       `json:"round"`
-	Token string     `json:"token"`
 }
 
 // Info 获取信息
@@ -131,7 +130,6 @@ func Info(c *gin.Context) {
 	res := info{
 		Team:  teamInfo,
 		Round: config.ROUND_NOW,
-		Token: teamInfo.Token,
 	}
 	util.Success(c, "success", gin.H{
 		"info": res,

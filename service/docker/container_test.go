@@ -28,17 +28,18 @@ func TestStartContainer(t *testing.T) {
 
 // 设置testweb这个容器地密码，并且进去执行whoami
 func TestSetContainerSSH(t *testing.T) {
-	container := "testweb"
-	user := "root"
+	container := "easyweb"
+	user := "ymk" // 容器里得有一个ymk用户
 	pwd := "123456"
 	err := SetContainerSSH(container, user, pwd)
 	if err != nil {
 		t.Log(err.Error())
 		t.Fail()
 	}
-	ip, _ := GetIp(container)
-	client, err := ssh.Dial("tcp", ip+":22", &ssh.ClientConfig{
-		User:            "root",
+
+	// 测试前要先在自己电脑上登一下，不然会失败
+	client, err := ssh.Dial("tcp", "192.168.154.128"+":222", &ssh.ClientConfig{
+		User:            "ymk",
 		Auth:            []ssh.AuthMethod{ssh.Password(pwd)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         5 * time.Second,

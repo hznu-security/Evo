@@ -56,7 +56,7 @@ func SetContainerSSH(container, user, pwd string) error {
 		AttachStderr: true,
 		AttachStdin:  true,
 		AttachStdout: true,
-		Cmd:          []string{"passwd"},
+		Cmd:          []string{"passwd", user},
 	})
 	attach, _ := cli.ContainerExecAttach(ctx, id.ID, types.ExecStartCheck{})
 	err = cli.ContainerExecStart(ctx, id.ID, types.ExecStartCheck{
@@ -140,6 +140,7 @@ func ContainerExec(container string, command string) (types.ContainerExecInspect
 	return inspect, nil
 }
 
+// TODO 有错误
 func ParsePort(port string) nat.PortMap {
 	portMap := make(map[nat.Port][]nat.PortBinding)
 	portSet := make(nat.PortSet, 0)
@@ -155,14 +156,4 @@ func ParsePort(port string) nat.PortMap {
 		}
 	}
 	return portMap
-}
-
-func GetIp(name string) (string, error) {
-	ctx := context.Background()
-	cli, _ := getClient()
-	res, err := cli.ContainerInspect(ctx, name)
-	if err != nil {
-		return "", err
-	}
-	return res.NetworkSettings.IPAddress, nil
 }

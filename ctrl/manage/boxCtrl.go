@@ -14,6 +14,7 @@ import (
 	"Evo/service/docker"
 	"Evo/util"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/docker/go-connections/nat"
 	"github.com/gin-gonic/gin"
@@ -44,7 +45,23 @@ func PostBox(c *gin.Context) {
 		return
 	}
 
-	// 检查一遍
+	// 检查题目是否存在，靶机是否已存在，port格式是否正确
+	if err := checkChallengePort(boxForm.ChallengePort, boxForm.TeamId); err != nil {
+		util.Fail(c, err.Error(), nil)
+		return
+	}
+
+	err := docker.CheckImage(boxForm.Image)
+	if err != nil {
+		if err.Error() == "镜像不存在" {
+			util.Fail(c, "镜像不存在", nil)
+		} else {
+			log.Println(err.Error())
+			util.Error(c, "检查镜像失败", nil)
+		}
+		return
+	}
+
 	var newBox model.Box
 	var challenge model.Challenge
 	portMap := make(nat.PortMap)
@@ -54,16 +71,6 @@ func PostBox(c *gin.Context) {
 	var gameBoxes []model.GameBox
 
 	for challengeId, port := range boxForm.ChallengePort {
-		db.DB.Where("challenge_id = ? and team_id = ?", challengeId, boxForm.TeamId).First(&newBox)
-		if newBox.ID != 0 {
-			util.Fail(c, fmt.Sprintf("靶机已存在,队伍:%v 题目:%v", boxForm.TeamId, challengeId), nil)
-			return
-		}
-		db.DB.Where("id = ?", challengeId).First(&challenge)
-		if challenge.ID == 0 {
-			util.Fail(c, fmt.Sprintf("题目:%v不存在", challengeId), nil)
-			return
-		}
 		// 解析port   port形式:8080:8080,9090:9090
 		pMap := docker.ParsePort(port)
 
@@ -77,16 +84,17 @@ func PostBox(c *gin.Context) {
 		cNameBuilder.WriteString("C")
 		cNameBuilder.WriteRune(rune(challengeId))
 
+		// 新增一个靶机
+		// 靶机名字市题目名+队伍名
 		gameBoxes = append(gameBoxes, model.GameBox{
 			TeamId:  boxForm.TeamId,
-			Name:    challenge.Title,
+			Name:    challenge.Title + strconv.Itoa(int(boxForm.TeamId)),
 			SshPort: boxForm.SshPort,
 			SshUser: boxForm.SshUser,
 			SshPwd:  boxForm.SshPwd,
 			Port:    gameBoxPort,
 			Score:   challenge.Score,
 		})
-
 	}
 	cNameBuilder.WriteString("T")
 	cNameBuilder.WriteRune(rune(boxForm.TeamId))
@@ -95,7 +103,7 @@ func PostBox(c *gin.Context) {
 
 	// 开始启动容器
 	// 传入镜像名，容器名，端口映射
-	err := docker.StartContainer(boxForm.Image, cName, &portMap)
+	err = docker.StartContainer(boxForm.Image, cName, &portMap)
 	if err != nil {
 		log.Println(err)
 		err := docker.RemoveContainer(cName)
@@ -145,10 +153,10 @@ func PostBox(c *gin.Context) {
 	util.Success(c, "success", nil)
 }
 
-// TODO
 func GetBox(c *gin.Context) {
 	boxes := make([]model.GameBox, 0)
-	db.DB.Find(&boxes)
+	db.DB.Select([]string{"team_id", "c_name", "name", "port", "ssh_port", "ssh_user", "ssh_pwd",
+		"score", "visible", "is_down", "is_attacked"}).Find(&boxes)
 	util.Success(c, "success", gin.H{
 		"boxes": boxes,
 	})
@@ -160,35 +168,34 @@ type putBoxForm struct {
 	TeamId      uint `binding:"required"`
 }
 
-// TODO
+// TODO 靶机创建后直接不允许修改，直接删容器好了
 func PutBox(c *gin.Context) {
-	var form putBoxForm
-	err := c.ShouldBind(&form)
-	if err != nil {
-		log.Println(err)
-		util.Fail(c, "参数绑定失败", nil)
-		return
-	}
-	var box model.Box
-	db.DB.Where("id = ?", form.BoxId).First(&box)
-	if box.ID == 0 {
-		util.Fail(c, "靶机不存在", nil)
-		return
-	}
-	box.ChallengeID = form.ChallengeId
-	box.TeamId = form.TeamId
-	db.DB.Save(&box)
-
-	log.Println("修改靶机:", box.Name)
-	util.Success(c, "success", gin.H{
-		"box": box,
-	})
+	//var form putBoxForm
+	//err := c.ShouldBind(&form)
+	//if err != nil {
+	//	log.Println(err)
+	//	util.Fail(c, "参数绑定失败", nil)
+	//	return
+	//}
+	//var box model.Box
+	//db.DB.Where("id = ?", form.BoxId).First(&box)
+	//if box.ID == 0 {
+	//	util.Fail(c, "靶机不存在", nil)
+	//	return
+	//}
+	//box.ChallengeID = form.ChallengeId
+	//box.TeamId = form.TeamId
+	//db.DB.Save(&box)
+	//
+	//log.Println("修改靶机:", box.Name)
+	//util.Success(c, "success", gin.H{
+	//	"box": box,
+	//})
 }
 
-// TODO 如果一个容器对应的最后一个gamebox被删除了，就删除这个容器
-// DelBox 移除靶机,这里不删除容器
+// DelBox 删除靶机，不支持修改靶机信息，想修改直接调用到这里删除容器
 func DelBox(c *gin.Context) {
-	boxId := c.Query("boxId")
+	boxId := c.Query("gameBoxId")
 	id, err := strconv.Atoi(boxId)
 	if err != nil {
 		util.Fail(c, "参数错误", gin.H{
@@ -203,8 +210,23 @@ func DelBox(c *gin.Context) {
 		return
 	}
 
-	db.DB.Delete(&gameBox)
-	log.Println("删除靶机:", gameBox.Name)
+	var container model.Box
+	db.DB.Where("name = ?", gameBox.CName).First(&container)
+	if container.ID == 0 {
+		errMsg := fmt.Sprintf("容器:%s不存在", gameBox.CName)
+		log.Println(errMsg)
+		util.Error(c, errMsg, nil)
+	}
+	// 删除容器
+	if err := docker.RemoveContainer(container.Name); err != nil {
+		log.Println(err.Error())
+		util.Error(c, fmt.Sprintf("删除容器:%s失败", container.Name), nil)
+	}
+
+	// 删除该容器信息
+	db.DB.Delete(&container)
+	// 删除所有与该容器相关的game_box
+	db.DB.Where("c_name = ?", container.Name).Delete(model.GameBox{})
 	util.Success(c, "删除成功", nil)
 }
 
@@ -279,12 +301,9 @@ func TestSSHAll(c *gin.Context) {
 	}
 }
 
-func testSSH(name, user, pwd string) (string, error) {
-	ip, err := docker.GetIp(name)
-	if err != nil {
-		return "", err
-	}
-	res, err := util.SSHExec(ip, user, pwd, "whoami")
+// 给端口，用户明，密码。
+func testSSH(port, user, pwd string) (string, error) {
+	res, err := util.SSHExec(port, user, pwd, "whoami")
 	if !strings.Contains(res, user) {
 		return res, fmt.Errorf("测试失败")
 	}
@@ -296,4 +315,44 @@ func testSSH(name, user, pwd string) (string, error) {
 
 func ReFreshFlag(c *gin.Context) {
 
+}
+
+func checkPortFormat(port string) error {
+	pms := strings.Split(port, ",")
+	for _, pm := range pms {
+		if !strings.Contains(pm, ":") {
+			return errors.New(fmt.Sprintf("port格式错误 %s", port))
+		}
+		m := strings.Split(pm, ":")
+		if len(m) != 2 {
+			return errors.New(fmt.Sprintf("port格式错误 %s", port))
+		}
+		// 判断是不是整数
+		for _, p := range m {
+			if _, err := strconv.Atoi(p); err != nil {
+				return errors.New(fmt.Sprintf("port格式错误 %s", p))
+			}
+		}
+	}
+	return nil
+}
+
+func checkChallengePort(challengePort map[uint]string, teamId uint) error {
+	var box model.GameBox
+	var challenge model.Challenge
+	for challengeId, port := range challengePort {
+		db.DB.Where("challenge_id = ? and team_id = ?", challengeId, teamId).First(&box)
+		if box.ID != 0 {
+			return errors.New(fmt.Sprintf("靶机已存在,队伍:%v 题目:%v", teamId, challengeId))
+		}
+		db.DB.Where("id = ?", challengeId).First(&challenge)
+		if challenge.ID == 0 {
+			return errors.New(fmt.Sprintf("题目:%v不存在", challengeId))
+		}
+		err := checkPortFormat(port)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

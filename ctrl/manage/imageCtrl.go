@@ -10,6 +10,7 @@ import (
 	"Evo/service/docker"
 	"Evo/util"
 	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -18,6 +19,12 @@ import (
 // PostImage 接受上传的tar文件，打包成镜像
 // 注意！必须是一个文件夹（名字为题目名）打包为名字.tar的打包文件   //TODO
 func PostImage(c *gin.Context) {
+	imagePath := viper.GetString("image.path")
+	if err := testAndSet(imagePath); err != nil {
+		log.Println(err.Error())
+		util.Error(c, "上传出错", nil)
+	}
+
 	// 解析表单
 	file, err := c.FormFile("image")
 	if err != nil {
@@ -38,7 +45,6 @@ func PostImage(c *gin.Context) {
 		})
 	}
 
-	imagePath := viper.GetString("image.path")
 	dst := imagePath + name + ".tar"
 	err = c.SaveUploadedFile(file, dst)
 	if err != nil {
@@ -66,7 +72,7 @@ func PostImage(c *gin.Context) {
 	})
 }
 
-// GetImage 列出所有镜像
+// GetImage 列出所有镜像  // TODO
 func GetImage(c *gin.Context) {
 	images, err := docker.ListImage()
 	if err != nil {
@@ -91,4 +97,23 @@ func DelImage(c *gin.Context) {
 	}
 	log.Println("删除镜像", imageId)
 	util.Success(c, "成功", nil)
+}
+
+func testAndSet(path string) error {
+	_, err := os.Stat(path)
+	if err == nil {
+		return nil
+	}
+	if os.IsNotExist(err) {
+		log.Println(err.Error())
+	} else {
+		return err
+	}
+	err = os.MkdirAll(path, 0644)
+	if err != nil {
+		return err
+	} else {
+		log.Printf("创建目录:%s", path)
+	}
+	return nil
 }

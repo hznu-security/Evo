@@ -91,3 +91,21 @@ func RemoveImage(id string) error {
 
 	return nil
 }
+
+func CheckImage(imgId string) error {
+	ctx := context.Background()
+	cli, err := getClient()
+	if err != nil {
+		return err
+	}
+	images, err := cli.ImageList(ctx, types.ImageListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, img := range images {
+		if img.ID == imgId {
+			return nil
+		}
+	}
+	return errors.New("镜像不存在")
+}

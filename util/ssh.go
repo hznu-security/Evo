@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-func SSHExec(ip string, user string, pwd string, cmd string) (output string, err error) {
-	client, err := ssh.Dial("tcp", ip+":22", &ssh.ClientConfig{
+func SSHExec(port string, user string, pwd string, cmd string) (output string, err error) {
+	client, err := ssh.Dial("tcp", "localhost:"+port, &ssh.ClientConfig{
 		User:            user,
 		Auth:            []ssh.AuthMethod{ssh.Password(pwd)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),

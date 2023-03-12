@@ -66,7 +66,7 @@ func GetChallenge(c *gin.Context) {
 	return
 }
 
-// TODO  删除题目的时候，删除靶机
+// DelChallenge 当题目有依赖他的靶机时，不能删除题目
 func DelChallenge(c *gin.Context) {
 	challengeId := c.Query("challengeId")
 	id, err := strconv.Atoi(challengeId)
@@ -84,7 +84,7 @@ func DelChallenge(c *gin.Context) {
 	}
 
 	var count int64
-	db.DB.Model(&model.Box{}).Where("challenge_id = ?", id).Count(&count)
+	db.DB.Model(&model.GameBox{}).Where("challenge_id = ?", id).Count(&count)
 	if count != 0 {
 		util.Fail(c, "删除失败，有依赖于题目的靶机", nil)
 		return
@@ -146,7 +146,6 @@ func Visible(c *gin.Context) {
 		})
 		return
 	}
-
 	var challenge model.Challenge
 
 	db.DB.Model(&model.Challenge{}).Where("id = ?", id).First(&challenge)
@@ -162,44 +161,4 @@ func Visible(c *gin.Context) {
 	}
 	util.Success(c, "设置成功", nil)
 	return
-}
-
-func SetVisible(c *gin.Context) {
-	challengeId := c.Query("challengeId")
-	id, err := strconv.Atoi(challengeId)
-	if err != nil {
-		util.Fail(c, "参数错误", gin.H{
-			"challengeId": id,
-		})
-		return
-	}
-
-	err = db.DB.Model(&model.Challenge{}).Where("id = ?", id).
-		Update("visible", true).Error
-	if err != nil {
-		util.Fail(c, "设置失败", nil)
-		return
-	}
-	db.DB.Model(&model.GameBox{}).Where("challenge_id = ?", id).Update("visible", true)
-	util.Success(c, "设置成功", nil)
-}
-
-func SetUnVisible(c *gin.Context) {
-	challengeId := c.Query("challengeId")
-	id, err := strconv.Atoi(challengeId)
-	if err != nil {
-		util.Fail(c, "参数错误", gin.H{
-			"challengeId": id,
-		})
-		return
-	}
-
-	err = db.DB.Model(&model.Challenge{}).Where("id = ?", id).
-		Update("visible", false).Error
-	if err != nil {
-		util.Fail(c, "设置失败", nil)
-		return
-	}
-	db.DB.Model(&model.GameBox{}).Where("challenge_id = ?", id).Update("visible", false)
-	util.Success(c, "设置成功", nil)
 }
