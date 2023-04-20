@@ -23,6 +23,7 @@ func Time(c *gin.Context) {
 		NowRound        uint
 		RoundTime       uint    // 每轮时间，单位秒
 		RoundRemainTime float64 // 单位为秒
+		RemainTime      float64
 	}
 	util.Success(c, "success", gin.H{
 		"time": timeInfo{
@@ -31,6 +32,7 @@ func Time(c *gin.Context) {
 			NowRound:        config.ROUND_NOW,
 			RoundTime:       config.ROUND_TIME,
 			RoundRemainTime: config.GetRoundRemainTime(),
+			RemainTime:      config.GetRestTime(),
 		},
 	})
 }

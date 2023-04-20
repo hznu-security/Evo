@@ -8,6 +8,7 @@ package config
 
 import (
 	"github.com/spf13/viper"
+	"log"
 	"os"
 	"time"
 )
@@ -44,7 +45,7 @@ var START_TIME string
 var END_TIME string
 
 // ROUND_NOW 当前比赛的轮次
-var ROUND_NOW uint = 1
+var ROUND_NOW uint
 
 // DOWN_SCORE checkdown 扣分
 var DOWN_SCORE uint
@@ -56,8 +57,55 @@ var StartTime time.Time
 
 var EndTime time.Time
 
+func SetTime() {
+	start, err := time.ParseInLocation(TIME_FORMAT, START_TIME, time.Local)
+	if err != nil {
+		panic("加载比赛时间失败,检查时间格式")
+	}
+	end, err := time.ParseInLocation(TIME_FORMAT, END_TIME, time.Local)
+	if err != nil {
+		panic("加载比赛时间失败,检查时间格式")
+	}
+
+	//if start.Sub(time.Now()) < 0 {
+	//	log.Panicln("比赛时间设置有误,开始时间应晚于当前时间")
+	//}
+	//
+	//if end.Sub(start) < 0 {
+	//	log.Panicln("比赛时间设置有误,结束时间应晚于开始时间")
+	//}
+
+	StartTime = start
+	EndTime = end
+	processing := uint(end.Sub(start).Minutes()) // 后面的时间 sub 前面的时间
+	GAME_ROUND = processing / ROUND_TIME
+}
+
+func SetTime1() {
+	start, err := time.ParseInLocation(TIME_FORMAT, START_TIME, time.Local)
+	if err != nil {
+		panic("加载比赛时间失败,检查时间格式")
+	}
+	end, err := time.ParseInLocation(TIME_FORMAT, END_TIME, time.Local)
+	if err != nil {
+		panic("加载比赛时间失败,检查时间格式")
+	}
+
+	StartTime = start
+	EndTime = end
+	processing := uint(end.Sub(start).Minutes()) // 后面的时间 sub 前面的时间
+	if processing%ROUND_TIME != 0 {
+		log.Panicln("回合数不为整数，请重设时间")
+	}
+	GAME_ROUND = processing / ROUND_TIME
+
+	// 获得round now
+	ROUND_NOW = uint(time.Now().Sub(StartTime) / time.Minute * time.Duration(ROUND_TIME))
+}
+
 // InitConfig 初始化配置
 func InitConfig() {
+	log.Println("读取设置")
 	workDir, _ := os.Getwd()
 	viper.SetConfigName("config")
 	viper.SetConfigType("yml")
@@ -77,26 +125,27 @@ func InitConfig() {
 	ATTACK_SCORE = viper.GetUint("game.attackscore")
 	ROUND_TIME = viper.GetUint("game.roundtime")
 
-	start, err := time.ParseInLocation(TIME_FORMAT, START_TIME, time.Local)
-	if err != nil {
-		panic("加载比赛时间失败")
-	}
-	end, err := time.ParseInLocation(TIME_FORMAT, END_TIME, time.Local)
-	if err != nil {
-		panic("加载比赛时间失败")
-	}
-	StartTime = start
-	EndTime = end
-	processing := uint(start.Sub(end).Minutes())
-	GAME_ROUND = processing / ROUND_TIME
+	//SetTime()
+
+	SetTime1()
 }
 
 // 返回本轮剩余时间 返回秒数
 func GetRoundRemainTime() float64 {
-	return StartTime.Add(time.Duration(ROUND_NOW*ROUND_TIME) * time.Minute).Sub(time.Now()).Seconds()
+	res := StartTime.Add(time.Duration(ROUND_NOW*ROUND_TIME) * time.Minute).Sub(time.Now()).Seconds()
+	if res > 0 {
+		return res
+	} else {
+		return 0
+	}
 }
 
 // 返回比赛剩余时间  返回秒数
 func GetRestTime() float64 {
-	return EndTime.Sub(StartTime).Seconds()
+	res := EndTime.Sub(time.Now()).Seconds()
+	if res > 0 {
+		return res
+	} else {
+		return 0
+	}
 }

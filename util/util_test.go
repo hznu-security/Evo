@@ -13,11 +13,11 @@ import (
 
 // 测试SSHExec
 func TestSSHExec(t *testing.T) {
-	ip := "101.37.13.45"
+	port := "2222"
 	user := "ymk"
-	pwd := "ymk0910"
+	pwd := "123"
 	cmd := "whoami"
-	res, err := SSHExec(ip, user, pwd, cmd)
+	res, err := SSHExec(port, user, pwd, cmd)
 	if err != nil {
 		log.Fatalln(err)
 	}

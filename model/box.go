@@ -8,8 +8,8 @@ type Box struct {
 	ChallengeID uint
 	TeamId      uint
 	Name        string `gorm:"type:varchar(100)"`
-	Port        string `gorm:"type:varchar(100)"` // 题目的port
-	SshPort     string `gorm:"type:varchar(20)"`  // ssh登录的port
+	Port        string `gorm:"type:text"`        // 题目的port
+	SshPort     string `gorm:"type:varchar(20)"` // ssh登录的port
 	SshUser     string `gorm:"type:varchar(20)"`
 	SshPwd      string `gorm:"type:varchar(50)"`
 }

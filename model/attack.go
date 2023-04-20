@@ -1,10 +1,12 @@
 package model
 
+import "gorm.io/gorm"
+
 type Attack struct {
-	ID          uint `gorm:"primarykey"`
+	gorm.Model
 	TeamID      uint `gorm:"type:varchar(50);not null"`
 	Attacker    uint
-	BoxId       uint
+	GameBoxId   uint
 	ChallengeId uint
 	Round       uint
 }

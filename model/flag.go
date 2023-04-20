@@ -6,7 +6,7 @@ type Flag struct {
 	GameBoxId   uint
 	ChallengeID uint
 	Round       uint
-	Flag        string `gorm:"varchar(255);not null"`
+	Flag        string `gorm:"type:varchar(255);not null"`
 }
 
 func (Flag) TableName() string {

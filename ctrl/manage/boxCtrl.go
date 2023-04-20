@@ -33,9 +33,10 @@ type BoxForm struct {
 	Image         string          `binding:"required,max=100"` // 选择容器的名字
 	SshPort       string          `json:"sshPort" binding:"required"`
 	SshUser       string          `json:"sshUser" binding:"required"`
-	SshPwd        string          `json:"sshPwd" binding:"required"`
+	SshPwd        string          `json:"sshPwd"`
 }
 
+// TODO 加检查，别重复部署
 func PostBox(c *gin.Context) {
 	// 绑定参数
 	var boxForm BoxForm
@@ -75,39 +76,42 @@ func PostBox(c *gin.Context) {
 		pMap := docker.ParsePort(port)
 
 		gameBoxPort := ""
-
+		db.DB.Where("id = ?", challengeId).First(&challenge)
 		for k, v := range pMap {
 			portMap[k] = v
 			gameBoxPort += string(k)
 			gameBoxPort = gameBoxPort + ","
 		}
 		cNameBuilder.WriteString("C")
-		cNameBuilder.WriteRune(rune(challengeId))
+		cNameBuilder.WriteString(strconv.Itoa(int(challengeId)))
 
 		// 新增一个靶机
 		// 靶机名字市题目名+队伍名
 		gameBoxes = append(gameBoxes, model.GameBox{
-			TeamId:  boxForm.TeamId,
-			Name:    challenge.Title + strconv.Itoa(int(boxForm.TeamId)),
-			SshPort: boxForm.SshPort,
-			SshUser: boxForm.SshUser,
-			SshPwd:  boxForm.SshPwd,
-			Port:    gameBoxPort,
-			Score:   challenge.Score,
+			TeamId:      boxForm.TeamId,
+			SshPort:     boxForm.SshPort,
+			SshUser:     boxForm.SshUser,
+			Port:        gameBoxPort,
+			Score:       challenge.Score,
+			ChallengeID: challengeId,
 		})
 	}
 	cNameBuilder.WriteString("T")
-	cNameBuilder.WriteRune(rune(boxForm.TeamId))
+	cNameBuilder.WriteString(strconv.Itoa(int(boxForm.TeamId)))
 
 	cName := cNameBuilder.String()
 
 	// 开始启动容器
 	// 传入镜像名，容器名，端口映射
+	sshPortMap := docker.ParsePort(boxForm.SshPort + ":22")
+	for k, v := range sshPortMap {
+		portMap[k] = v
+	}
 	err = docker.StartContainer(boxForm.Image, cName, &portMap)
 	if err != nil {
 		log.Println(err)
-		err := docker.RemoveContainer(cName)
-		log.Println(err)
+		errr := docker.RemoveContainer(cName)
+		log.Println(errr)
 		util.Error(c, "启动靶机失败", gin.H{
 			"error": err.Error(),
 		})
@@ -122,6 +126,7 @@ func PostBox(c *gin.Context) {
 	newBox.SshPwd = sshPwd
 	newBox.Name = cName
 	newBox.Port = string(port)
+	newBox.SshPort = boxForm.SshPort
 	err = docker.SetContainerSSH(cName, boxForm.SshUser, sshPwd)
 	if err != nil {
 		log.Println(err)
@@ -148,15 +153,36 @@ func PostBox(c *gin.Context) {
 	// 开始写入gamebox
 	for i := 0; i < len(gameBoxes); i++ {
 		gameBoxes[i].CName = cName
+		gameBoxes[i].SshPwd = newBox.SshPwd
 	}
+
+	// 插入gamebox
+	db.DB.Create(&gameBoxes)
 
 	util.Success(c, "success", nil)
 }
 
+type gameBox struct {
+	ID       uint
+	CName    string  `json:"CName"`
+	Port     string  `json:"port"`
+	SshPort  string  `json:"sshPort"`
+	SshUser  string  `json:"sshUser"`
+	SshPwd   string  `json:"sshPwd"`
+	Score    float64 `json:"score"`
+	IsDown   bool    `json:"isDown"`
+	IsAttack bool    `json:"isAttack"`
+	Name     string  `json:"TeamName"`      // 队伍名
+	Title    string  `json:"challengeName"` // 题目名
+}
+
 func GetBox(c *gin.Context) {
-	boxes := make([]model.GameBox, 0)
-	db.DB.Select([]string{"team_id", "c_name", "name", "port", "ssh_port", "ssh_user", "ssh_pwd",
-		"score", "visible", "is_down", "is_attacked"}).Find(&boxes)
+	boxes := make([]gameBox, 0)
+	db.DB.Model(&model.GameBox{}).Select(`game_boxes.id,game_boxes.c_name,game_boxes.port,
+	game_boxes.ssh_port,game_boxes.ssh_user,game_boxes.ssh_pwd,game_boxes.score,game_boxes.is_down,
+	game_boxes.is_attacked,challenges.title,teams.name`).
+		Joins("inner join challenges on challenges.id = game_boxes.challenge_id").
+		Joins("inner join teams on teams.id = game_boxes.team_id").Scan(&boxes)
 	util.Success(c, "success", gin.H{
 		"boxes": boxes,
 	})
@@ -193,7 +219,7 @@ func PutBox(c *gin.Context) {
 	//})
 }
 
-// DelBox 删除靶机，不支持修改靶机信息，想修改直接调用到这里删除容器
+// TODO DelBox 删除靶机，不支持修改靶机信息，想修改直接调用到这里删除容器
 func DelBox(c *gin.Context) {
 	boxId := c.Query("gameBoxId")
 	id, err := strconv.Atoi(boxId)
@@ -226,7 +252,7 @@ func DelBox(c *gin.Context) {
 	// 删除该容器信息
 	db.DB.Delete(&container)
 	// 删除所有与该容器相关的game_box
-	db.DB.Where("c_name = ?", container.Name).Delete(model.GameBox{})
+	db.DB.Delete(&model.GameBox{}, "c_name = ?", gameBox.CName)
 	util.Success(c, "删除成功", nil)
 }
 
@@ -302,8 +328,10 @@ func TestSSHAll(c *gin.Context) {
 }
 
 // 给端口，用户明，密码。
-func testSSH(port, user, pwd string) (string, error) {
-	res, err := util.SSHExec(port, user, pwd, "whoami")
+func testSSH(cName, user, pwd string) (string, error) {
+	var box model.Box
+	db.DB.Where("name = ?", cName).First(&box)
+	res, err := util.SSHExec(box.SshPort, user, pwd, "whoami")
 	if !strings.Contains(res, user) {
 		return res, fmt.Errorf("测试失败")
 	}
@@ -355,4 +383,22 @@ func checkChallengePort(challengePort map[uint]string, teamId uint) error {
 		}
 	}
 	return nil
+}
+
+func UpdateScore(c *gin.Context) {
+	updateScore()
+}
+
+// TODO
+func updateScore() {
+	teams := make([]model.Team, 0)
+	db.DB.Find(&teams)
+	for i := 0; i < len(teams); i++ {
+		gameBoxes := make([]model.GameBox, 0)
+		db.DB.Select([]string{"score"}).Where("team_id = ?", teams[i].ID).Find(&gameBoxes)
+		for j := 0; j < len(gameBoxes); j++ {
+			teams[i].Score += gameBoxes[j].Score
+		}
+	}
+	db.DB.Save(&teams)
 }

@@ -9,6 +9,7 @@ package db
 import (
 	"Evo/auth"
 	"Evo/model"
+	"Evo/util"
 	"fmt"
 
 	"github.com/spf13/viper"
@@ -38,9 +39,11 @@ func InitDB() {
 	if admin.ID == 0 {
 		admin.Name = "admin"
 		admin.Pwd = auth.Encode("123456")
+		admin.Token = util.GetRandomStr(15, "", "")
 		db.Create(&admin)
 	}
 	db.AutoMigrate(&model.Admin{}, &model.Attack{}, &model.Box{},
 		&model.Challenge{}, &model.Flag{},
-		&model.Notification{}, &model.Team{}, &model.Webhook{}, model.GameBox{})
+		&model.Notification{}, &model.Team{}, &model.Webhook{}, &model.GameBox{}, &model.Chart{})
+	Init()
 }

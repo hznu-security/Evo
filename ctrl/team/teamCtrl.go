@@ -110,7 +110,7 @@ func SubmitFlag(c *gin.Context) {
 
 	attack.Attacker = attacker
 	attack.Round = config.ROUND_NOW
-	attack.BoxId = box.ID
+	attack.GameBoxId = box.ID
 	attack.ChallengeId = flag.ChallengeID
 	attack.TeamID = flag.TeamId // 被攻击者
 
@@ -142,5 +142,27 @@ func GetNotification(c *gin.Context) {
 	db.DB.Find(&notifications)
 	util.Success(c, "success", gin.H{
 		"notifications": notifications,
+	})
+}
+
+type gameBox struct {
+	model.GameBox
+	Title          string  `json:"challengeName"`
+	Desc           string  `json:"desc"`
+	ChallengeScore float64 `json:"challengeScore"`
+}
+
+// GetGameBox 获取队伍的靶机信息
+func GetGameBox(c *gin.Context) {
+	teamId := c.Query("teamId")
+	// 查找靶机信息
+	boxes := make([]gameBox, 0)
+	db.DB.Model(&model.GameBox{}).Select(`game_boxes.id,game_boxes.port,
+	game_boxes.ssh_port,game_boxes.ssh_user,game_boxes.ssh_pwd,game_boxes.score,game_boxes.is_down,
+	game_boxes.is_attacked,challenges.title,challenges.desc,challenges.score as challenge_score`).
+		Joins("inner join challenges on challenges.id = game_boxes.challenge_id and challenges.visible = ?", true).
+		Where("game_boxes.team_id = ?", teamId).Scan(&boxes)
+	util.Success(c, "success", gin.H{
+		"boxes": boxes,
 	})
 }

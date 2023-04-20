@@ -11,9 +11,10 @@ import (
 	"Evo/db"
 	"Evo/model"
 	"Evo/util"
+	"log"
+	"strings"
 )
 
-// GenerateFlag 生成flag
 func GenerateFlag() error {
 	var boxes []model.GameBox
 	db.DB.Find(&boxes)
@@ -34,29 +35,33 @@ func GenerateFlag() error {
 	}
 	return nil
 }
-func RefreshFlag() {
-	/**
-	为每一台靶机更新flag
-	更新过程：
-		查出flag      boxId:flag
-		查出靶机信息   boxId:boxInfo
-		执行ssh
-	*/
+
+func RefreshFlag(round uint) {
+	var challenges []model.Challenge
+	db.DB.Where("auto_refresh = ?", true).Find(&challenges)
+
 	var flags []model.Flag
-	db.DB.Where("round = ?", config.ROUND_NOW).Find(&flags)
-	var boxes []model.Box
+	db.DB.Where("round = ?", round).Find(&flags)
+	var boxes []model.GameBox
 	db.DB.Find(&boxes)
 
 	m := make(map[uint]string)
 	for _, flag := range flags {
 		m[flag.GameBoxId] = flag.Flag
 	}
-	for i := 0; i < len(boxes); i++ {
-		go execRefresh(&boxes[i], m[boxes[i].ID])
+	for _, challenge := range challenges {
+		var gameBoxes []model.GameBox
+		db.DB.Where("challenge_id = ?", challenge.ID).Find(&gameBoxes)
+		for _, gameBox := range gameBoxes {
+			go execRefresh(gameBox, m[gameBox.ID], challenge.Command, round)
+		}
 	}
-
 }
 
-func execRefresh(box *model.Box, flag string) {
-
+func execRefresh(gameBox model.GameBox, flag string, command string, round uint) {
+	command = strings.ReplaceAll(command, "{{FLAG}}", flag)
+	_, err := util.SSHExec(gameBox.Port, gameBox.SshUser, gameBox.SshPwd, command)
+	if err != nil {
+		log.Printf("ssh error. Team:%d,GameBox:%s,Round:%d 更新FLAG失败", gameBox.TeamId, gameBox.ID, round)
+	}
 }

@@ -14,7 +14,7 @@ import (
 )
 
 func SSHExec(port string, user string, pwd string, cmd string) (output string, err error) {
-	client, err := ssh.Dial("tcp", "localhost:"+port, &ssh.ClientConfig{
+	client, err := ssh.Dial("tcp", "192.168.154.128:"+port, &ssh.ClientConfig{
 		User:            user,
 		Auth:            []ssh.AuthMethod{ssh.Password(pwd)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),

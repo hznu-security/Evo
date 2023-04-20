@@ -106,7 +106,9 @@ type putChallengeForm struct {
 func PutChallenge(c *gin.Context) {
 	var form putChallengeForm
 	err := c.ShouldBind(&form)
+	log.Println(form)
 	if err != nil {
+		log.Println(err.Error())
 		util.Fail(c, "参数绑定错误", nil)
 		return
 	}

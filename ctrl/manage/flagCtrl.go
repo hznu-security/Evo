@@ -11,6 +11,7 @@ import (
 	"Evo/model"
 	"Evo/service/game"
 	"Evo/util"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
 )
@@ -35,8 +36,17 @@ func PostFlag(c *gin.Context) {
 	util.Success(c, "success", nil)
 }
 
+// 清空falg表
+func clearFlag() {
+	sql := fmt.Sprintf("TRUNCATE TABLE %s;", "flags")
+	log.Println(sql)
+	db.DB.Exec(sql)
+}
+
 // GenerateFlag 生成flag,针对awd题目
 func GenerateFlag(c *gin.Context) {
+	// 先清空flag
+	clearFlag()
 	err := game.GenerateFlag()
 	if err != nil {
 		util.Error(c, "生成flag失败", nil)
@@ -53,16 +63,16 @@ func ExportFlag(c *gin.Context) {
 type FlagPage struct {
 	PageNum     int `json:"pageNum" binding:"required"`
 	PageSize    int `json:"pageSize" binding:"required"`
-	TeamId      int
-	challengeId int
-	round       int
+	TeamId      int `json:"teamId"`
+	ChallengeId int `json:"ChallengeId"`
+	Round       int `json:"Round"`
 }
 
 func GetFlag(c *gin.Context) {
 	var form FlagPage
 	err := c.ShouldBind(&form)
 	if err != nil {
-		log.Println(form)
+		log.Println(err.Error())
 		util.Fail(c, "参数绑定失败", nil)
 		return
 	}
@@ -70,14 +80,16 @@ func GetFlag(c *gin.Context) {
 	if form.TeamId != 0 {
 		m["team_id"] = form.TeamId
 	}
-	if form.challengeId != 0 {
-		m["challenge_id"] = form.challengeId
+	if form.ChallengeId != 0 {
+		m["challenge_id"] = form.ChallengeId
 	}
-	if form.round != 0 {
-		m["round"] = form.round
+	if form.Round != 0 {
+		m["Round"] = form.Round
 	}
 	var flags []model.Flag
-	err = db.DB.Where(m).Limit(form.PageSize).Offset((form.PageNum - 1) * form.PageSize).Find(&flags).Error
+	var count int64
+	err = db.DB.Where(m).Limit(form.PageSize).Offset((form.PageNum - 1) * form.PageSize).Find(&flags).
+		Limit(-1).Offset(-1).Count(&count).Error
 	if err != nil {
 		log.Println(err.Error())
 		util.Error(c, "查询错误", nil)
@@ -85,5 +97,6 @@ func GetFlag(c *gin.Context) {
 	}
 	util.Success(c, "success", gin.H{
 		"flags": flags,
+		"count": count,
 	})
 }

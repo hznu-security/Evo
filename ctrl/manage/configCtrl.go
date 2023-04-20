@@ -7,15 +7,16 @@
 package manage
 
 import (
+	"Evo/config"
 	"Evo/cron"
 	"Evo/db"
-	"Evo/model"
 	"Evo/util"
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
-	"gorm.io/gorm"
+	"log"
+	"time"
 )
 
 // PutConfig 修改比赛相关配置
@@ -79,13 +80,19 @@ func PutConfig(c *gin.Context) {
 			}
 		}
 	}
-
 	// 覆盖之前的配置
 	err := viper.WriteConfig()
 	if err != nil {
 		util.Error(c, "配置写入失败", nil)
 		return
 	}
+
+	st := viper.GetString("game.starttime")
+	start, err := time.ParseInLocation(config.TIME_FORMAT, st, time.Local)
+	if time.Now().Sub(start) > 0 {
+		util.Success(c, "比赛开始时间早于当前时间", nil)
+	}
+	//config.SetTime()
 	util.Success(c, "success", nil)
 }
 
@@ -100,23 +107,45 @@ func GetConfig(c *gin.Context) {
 // ResetConfig 重置平台  感觉没啥好写的
 func ResetConfig(c *gin.Context) {
 	// 删除team表,box表,challenges表，flags表，game_box表，notifications表，webhooks表,attack表，down表，chat表
-	stmt := &gorm.Statement{DB: db.DB}
-	stmt.Parse(&model.Down{})
-	sql := fmt.Sprintf("TRUNCATE TABLE %s", stmt.Table)
-	db.DB.Raw(sql)
-	stmt.Parse(&model.Attack{})
-	sql = fmt.Sprintf("TRUNCATE TABLE %s", stmt.Table)
-	stmt.Parse(&model.Team{})
-	sql = fmt.Sprintf("TRUNCATE TABLE %s", stmt.Table)
-	stmt.Parse(&model.Box{})
-	sql = fmt.Sprintf("TRUNCATE TABLE %s", stmt.Table)
-	stmt.Parse(&model.Challenge{})
-	sql = fmt.Sprintf("TRUNCATE TABLE %s", stmt.Table)
-	stmt.Parse(&model.Challenge{})
+	sql := fmt.Sprintf("TRUNCATE TABLE %s;", "downs")
+	log.Println(sql)
+	db.DB.Exec(sql)
 
-	sql = fmt.Sprintf("TRUNCATE TABLE %s", stmt.Table)
-	sql = fmt.Sprintf("TRUNCATE TABLE %s", stmt.Table)
-	sql = fmt.Sprintf("TRUNCATE TABLE %s", stmt.Table)
+	sql = fmt.Sprintf("TRUNCATE TABLE %s;", "attacks")
+	log.Println(sql)
+	db.DB.Exec(sql)
+
+	sql = fmt.Sprintf("TRUNCATE TABLE %s;", "teams")
+	log.Println(sql)
+	db.DB.Exec(sql)
+
+	sql = fmt.Sprintf("truncate table %s;", "boxes")
+	log.Println(sql)
+	db.DB.Exec(sql)
+
+	sql = fmt.Sprintf("TRUNCATE TABLE %s;", "challenges")
+	log.Println(sql)
+	db.DB.Exec(sql)
+
+	sql = fmt.Sprintf("TRUNCATE TABLE %s;", "game_boxes")
+	log.Println(sql)
+	db.DB.Exec(sql)
+
+	sql = fmt.Sprintf("TRUNCATE TABLE %s;", "flags")
+	log.Println(sql)
+	db.DB.Exec(sql)
+
+	sql = fmt.Sprintf("TRUNCATE TABLE %s;", "notifications")
+	log.Println(sql)
+	db.DB.Exec(sql)
+
+	sql = fmt.Sprintf("TRUNCATE TABLE %s;", "webhooks")
+	log.Println(sql)
+	db.DB.Exec(sql)
+
+	sql = fmt.Sprintf("TRUNCATE TABLE %s;", "charts")
+	log.Println(sql)
+	db.DB.Exec(sql)
 }
 
 // StartGame 设置比赛可以开始，到时间自动开启比赛

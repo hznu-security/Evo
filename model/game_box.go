@@ -8,7 +8,6 @@ type GameBox struct {
 	ChallengeID uint
 	TeamId      uint
 	CName       string `gorm:"type:varchar(100)"` // 其对应容器的name
-	Name        string `gorm:"type:varchar(100)"`
 	Port        string `gorm:"type:varchar(100)"`
 	SshPort     string `gorm:"type:varchar(20)"`
 	SshUser     string `gorm:"type:varchar(20)"`

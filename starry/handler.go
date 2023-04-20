@@ -42,6 +42,9 @@ func Attack(c *gin.Context) {
 	if err := c.ShouldBind(&attack); err != nil {
 		util.Fail(c, "发送失败", nil)
 	}
+	if attack.From == attack.To {
+		util.Fail(c, "参数错误", nil)
+	}
 	sendAttack(attack.From, attack.To)
 	util.Success(c, "success", nil)
 }

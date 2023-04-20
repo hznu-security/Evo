@@ -8,6 +8,8 @@ package middleware
 
 import (
 	"Evo/auth"
+	"Evo/db"
+	"Evo/model"
 	"log"
 	"net/http"
 	"strings"
@@ -54,8 +56,35 @@ func AuthMW() gin.HandlerFunc {
 				"msg":  "权限不足",
 			})
 			log.Println("权限不足")
+			c.Abort()
+			return
 		}
 		c.Set("teamId", claims.ID)
+		c.Next()
+	}
+}
+
+func CheckAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.GetHeader("Authorization")
+		if token == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code": 401,
+				"msg":  "no auth",
+			})
+			c.Abort()
+			return
+		}
+		var admin model.Admin
+		db.DB.Where("token = ?", token).First(&admin)
+		if admin.ID == 0 {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"code": 401,
+				"msg":  "auth not pass",
+			})
+			c.Abort()
+			return
+		}
 		c.Next()
 	}
 }

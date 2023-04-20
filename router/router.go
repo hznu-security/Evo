@@ -14,7 +14,7 @@ func InitRouter() *gin.Engine {
 	r.Use(middleware.CORSMiddleware())
 	// 静态文件服务
 	r.Static("/upload", "./upload")
-
+	r.GET("/update", manage.UpdateScore)
 	r.GET("/websocket", starry.ServeWebsocket)
 
 	infoGroup := r.Group("/info")
@@ -27,8 +27,10 @@ func InitRouter() *gin.Engine {
 	// 登录外所有接口都通过中间件进行验证
 	manager := r.Group("/manager")
 	{
+		manager.POST("/checkdown", middleware.CheckAuth(), manage.Check)
 		manager.POST("/login", manage.AdminLogin)
 		manager.Use(middleware.AuthMW())
+		manager.GET("/chart", manage.GetChart)
 		account := manager.Group("/account")
 		{
 			account.POST("", manage.PostAccount)
@@ -109,6 +111,7 @@ func InitRouter() *gin.Engine {
 		teamGroup.POST("/flag", middleware.SubmitMW(), middleware.AuthMW(), team.SubmitFlag) // 比赛结束后,不允许提交
 		//team.Use(middleware.AuthMW())
 		teamGroup.GET("/info", team.Info)
+		teamGroup.GET("/gameBox", team.GetGameBox)
 		teamGroup.GET("/notification", team.GetNotification) //选手端获取通知
 	}
 	return r
