@@ -35,15 +35,17 @@ func ServeWebsocket(c *gin.Context) {
 
 func Attack(c *gin.Context) {
 	type attackForm struct {
-		From uint `binding:"required"`
-		To   uint `binding:"required"`
+		From uint
+		To   uint
 	}
 	attack := attackForm{}
 	if err := c.ShouldBind(&attack); err != nil {
 		util.Fail(c, "发送失败", nil)
+		return
 	}
 	if attack.From == attack.To {
 		util.Fail(c, "参数错误", nil)
+		return
 	}
 	sendAttack(attack.From, attack.To)
 	util.Success(c, "success", nil)

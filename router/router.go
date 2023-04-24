@@ -12,6 +12,7 @@ import (
 func InitRouter() *gin.Engine {
 	r := gin.Default()
 	r.Use(middleware.CORSMiddleware())
+
 	// 静态文件服务
 	r.Static("/upload", "./upload")
 	r.GET("/update", manage.UpdateScore)

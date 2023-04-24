@@ -6,6 +6,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/docker/docker v20.10.17+incompatible
 	github.com/docker/go-connections v0.4.0
+	github.com/gin-contrib/static v0.0.1
 	github.com/gin-gonic/gin v1.8.1
 	github.com/gorilla/websocket v1.5.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
