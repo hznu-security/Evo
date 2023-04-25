@@ -9,6 +9,7 @@ package manage
 import (
 	"Evo/db"
 	"Evo/model"
+	"Evo/service/game"
 	"Evo/util"
 	"github.com/gin-gonic/gin"
 	"log"
@@ -162,5 +163,6 @@ func Visible(c *gin.Context) {
 		return
 	}
 	util.Success(c, "设置成功", nil)
+	game.CalcTeamScore()
 	return
 }

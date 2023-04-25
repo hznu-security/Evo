@@ -1,6 +1,7 @@
 package starry
 
 import (
+	"Evo/service/game"
 	"encoding/json"
 	"log"
 	"sync"
@@ -59,9 +60,9 @@ func (h *Hub) run() {
 				default: // 发送失败
 					h.mutex.Lock()
 					log.Println("close server 61")
-					
+
 					close(client.data)
-					
+
 					delete(h.clients, clientId)
 					h.mutex.Unlock()
 				}
@@ -96,7 +97,7 @@ func sendAttack(from uint, to uint) {
 }
 
 func sendRank() {
-	hub.sendMessage(RANK, rank{Teams: getInfo().Teams}) // TODO getInfo调得太频繁了
+	hub.sendMessage(RANK, game.GetRankList()) // TODO getInfo调得太频繁了
 }
 
 func sendRound(newRound uint) {

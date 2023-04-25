@@ -4,3 +4,4 @@ WORKDIR "/app"
 COPY Evo /app/app
 COPY config.yml /app/config.yml
 CMD ./app
+

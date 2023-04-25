@@ -194,7 +194,7 @@ type putBoxForm struct {
 	TeamId      uint `binding:"required"`
 }
 
-// TODO 靶机创建后直接不允许修改，直接删容器好了
+// 靶机创建后直接不允许修改，直接删容器好了
 func PutBox(c *gin.Context) {
 	//var form putBoxForm
 	//err := c.ShouldBind(&form)
@@ -219,7 +219,7 @@ func PutBox(c *gin.Context) {
 	//})
 }
 
-// TODO DelBox 删除靶机，不支持修改靶机信息，想修改直接调用到这里删除容器
+// DelBox 删除靶机，不支持修改靶机信息，想修改直接调用到这里删除容器
 func DelBox(c *gin.Context) {
 	boxId := c.Query("gameBoxId")
 	id, err := strconv.Atoi(boxId)
@@ -389,7 +389,7 @@ func UpdateScore(c *gin.Context) {
 	updateScore()
 }
 
-// TODO
+// TODO  这里有点问题 按说比赛开始后不能更新分数了
 func updateScore() {
 	teams := make([]model.Team, 0)
 	db.DB.Find(&teams)

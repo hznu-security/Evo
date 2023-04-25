@@ -63,6 +63,7 @@ func StartCron() error {
 			config.ROUND_NOW++
 			game.RefreshFlag(config.ROUND_NOW)
 			game.CalcScore(config.ROUND_NOW - 1)
+			game.SetRankList()
 		})
 	})
 	endEntry, _ = cron1.AddFunc(specEnd, func() {

@@ -152,3 +152,7 @@ func calcTeamScore() {
 		db.DB.Where("id = ?", team.ID).Update("score", score.Score)
 	}
 }
+
+func CalcTeamScore() {
+	calcTeamScore()
+}
