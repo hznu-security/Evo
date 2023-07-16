@@ -11,6 +11,7 @@ import (
 	"Evo/router"
 	"Evo/service/docker"
 	"Evo/starry"
+	"github.com/spf13/viper"
 	"io"
 	"log"
 	"os"
@@ -38,7 +39,8 @@ func main() {
 	docker.InitDocker()
 	r := router.InitRouter()
 
-	err = r.Run(":8080")
+	port := viper.GetString("server.port")
+	err = r.Run(":" + port)
 	if err != nil {
 		log.Println(err.Error())
 	}

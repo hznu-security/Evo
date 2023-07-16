@@ -11,6 +11,8 @@ import (
 	"testing"
 )
 
+
+// 现在这里测一下，command能执行不？
 // 测试SSHExec
 func TestSSHExec(t *testing.T) {
 	port := "2222"

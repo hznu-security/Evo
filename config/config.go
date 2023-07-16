@@ -93,6 +93,9 @@ func SetTime1() {
 
 	StartTime = start
 	EndTime = end
+	if EndTime.Sub(StartTime) < 0 {
+		log.Panicln("开始时间应早于结束时间")
+	}
 	processing := uint(end.Sub(start).Minutes()) // 后面的时间 sub 前面的时间
 	if processing%ROUND_TIME != 0 {
 		log.Panicln("回合数不为整数，请重设时间")

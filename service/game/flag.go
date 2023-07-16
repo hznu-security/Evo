@@ -62,6 +62,6 @@ func execRefresh(gameBox model.GameBox, flag string, command string, round uint)
 	command = strings.ReplaceAll(command, "{{FLAG}}", flag)
 	_, err := util.SSHExec(gameBox.Port, gameBox.SshUser, gameBox.SshPwd, command)
 	if err != nil {
-		log.Printf("ssh error. Team:%d,GameBox:%s,Round:%d 更新FLAG失败", gameBox.TeamId, gameBox.ID, round)
+		log.Printf("ssh error. Team:%d,GameBox:%d,Round:%d 更新FLAG失败", gameBox.TeamId, gameBox.ID, round)
 	}
 }

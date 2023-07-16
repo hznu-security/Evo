@@ -6,3 +6,17 @@
 
 package game
 
+import (
+	"Evo/config"
+	"Evo/db"
+	"testing"
+)
+
+func BenchmarkFlag(b *testing.B) {
+	config.InitConfig()
+	db.InitDB()
+	// 每次都刷第一回合的进去
+	for n := 0; n < b.N; n++ {
+		RefreshFlag(1)
+	}
+}

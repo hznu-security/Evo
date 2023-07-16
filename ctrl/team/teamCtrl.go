@@ -57,7 +57,7 @@ func TeamLogin(c *gin.Context) {
 }
 
 type flagFrom struct {
-	flag string `binding:"required,max=255"`
+	Flag string `json:"flag" binding:"required,max=255"`
 }
 
 // SubmitFlag 提交flag   需要解决flag重复提交问题
@@ -72,9 +72,8 @@ func SubmitFlag(c *gin.Context) {
 		util.Fail(c, "队伍不存在", nil)
 		return
 	}
-
 	var flag model.Flag
-	db.DB.Where("round = ? AND flag = ", config.ROUND_NOW, form.flag).First(&flag)
+	db.DB.Where("round = ? AND flag = ?", config.ROUND_NOW, form.Flag).Find(&flag)
 	// flag不正确,返回
 	if flag.ID == 0 {
 		util.Success(c, "flag不正确", nil)
@@ -82,13 +81,14 @@ func SubmitFlag(c *gin.Context) {
 	}
 
 	if flag.TeamId == teamId || flag.Round != config.ROUND_NOW {
-
+		util.Success(c,"flag不正确",nil)
+		return
 	}
 
 	// flag正确,判断是否提交过了
 	var attack model.Attack
 	attacker := teamId.(uint)
-	db.DB.Where("attacker = ? AND round = ? AND box_id = ?", attacker, config.ROUND_NOW, flag.GameBoxId).First(&attack)
+	db.DB.Where("attacker = ? AND round = ? AND game_box_id = ?", attacker, config.ROUND_NOW, flag.GameBoxId).First(&attack)
 	if attack.ID != 0 {
 		util.Success(c, "重复提交", nil)
 		return
@@ -115,6 +115,7 @@ func SubmitFlag(c *gin.Context) {
 	attack.TeamID = flag.TeamId // 被攻击者
 
 	db.DB.Create(&attack)
+	util.Success(c, "success", nil)
 }
 
 type info struct {
