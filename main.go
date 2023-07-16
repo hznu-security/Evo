@@ -12,26 +12,24 @@ import (
 	"Evo/service/docker"
 	"Evo/starry"
 	"github.com/spf13/viper"
-	"io"
 	"log"
-	"os"
 )
 
 func main() {
 	// 初始化log
-	f, err := os.OpenFile("log.log", os.O_CREATE|os.O_APPEND|os.O_RDWR, os.ModePerm)
-	if err != nil {
-		return
-	}
-	defer func() {
-		f.Close()
-	}()
+	//f, err := os.OpenFile("log.log", os.O_CREATE|os.O_APPEND|os.O_RDWR, os.ModePerm)
+	//if err != nil {
+	//	return
+	//}
+	//defer func() {
+	//	f.Close()
+	//}()
 
 	// 组合一下即可，os.Stdout代表标准输出流
-	multiWriter := io.MultiWriter(os.Stdout, f)
-	log.SetOutput(multiWriter)
-
-	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	//multiWriter := io.MultiWriter(os.Stdout, f)
+	//log.SetOutput(multiWriter)
+	//
+	//log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	config.InitConfig()
 	db.InitDB()
@@ -40,7 +38,7 @@ func main() {
 	r := router.InitRouter()
 
 	port := viper.GetString("server.port")
-	err = r.Run(":" + port)
+	err := r.Run(":" + port)
 	if err != nil {
 		log.Println(err.Error())
 	}

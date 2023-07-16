@@ -67,13 +67,9 @@ func SetTime() {
 		panic("加载比赛时间失败,检查时间格式")
 	}
 
-	//if start.Sub(time.Now()) < 0 {
-	//	log.Panicln("比赛时间设置有误,开始时间应晚于当前时间")
-	//}
-	//
-	//if end.Sub(start) < 0 {
-	//	log.Panicln("比赛时间设置有误,结束时间应晚于开始时间")
-	//}
+	if end.Sub(start) < 0 {
+		log.Panicln("比赛时间设置有误,结束时间应晚于开始时间")
+	}
 
 	StartTime = start
 	EndTime = end

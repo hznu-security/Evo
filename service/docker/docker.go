@@ -17,5 +17,8 @@ func InitDocker() {
 }
 
 func getClient() (*client.Client, error) {
+	if host == "" {
+		return client.NewClientWithOpts()
+	}
 	return client.NewClient(fmt.Sprintf("tcp://%s", host), version, nil, nil)
 }

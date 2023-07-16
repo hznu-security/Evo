@@ -45,28 +45,6 @@ type Team struct {
 
 // GetRank 获取排名
 func GetRank(c *gin.Context) {
-	//var teams []Team
-	//var team []model.Team
-	//db.DB.Select([]string{"id", "name", "logo", "score"}).Find(&team)
-	//// 根据分数排序后返回
-	//sort.Slice(team, func(i, j int) bool {
-	//	return team[i].Score > team[j].Score
-	//})
-	//
-	//for rank, team := range team {
-	//	teams = append(teams, Team{
-	//		Id:    int(team.ID),
-	//		Name:  team.Name,
-	//		Rank:  rank + 1,
-	//		Img:   team.Logo,
-	//		Score: int(team.Score),
-	//	})
-	//}
-	//
-	//util.Success(c, "success", gin.H{
-	//	"rank": teams,
-	//})
-
 	util.Success(c, "success", gin.H{
 		"rank": game.GetRankList(),
 	})
