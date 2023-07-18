@@ -82,6 +82,7 @@ func PostBox(c *gin.Context) {
 			gameBoxPort += string(k)
 			gameBoxPort = gameBoxPort + ","
 		}
+		cNameBuilder.WriteString("evo-")
 		cNameBuilder.WriteString("C")
 		cNameBuilder.WriteString(strconv.Itoa(int(challengeId)))
 

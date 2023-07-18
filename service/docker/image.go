@@ -84,7 +84,9 @@ func RemoveImage(id string) error {
 	if err != nil {
 		return err
 	}
-	_, err = cli.ImageRemove(ctx, id, types.ImageRemoveOptions{})
+	_, err = cli.ImageRemove(ctx, id, types.ImageRemoveOptions{
+		PruneChildren: true,
+	})
 	if err != nil {
 		return fmt.Errorf("删除镜像失败 %v", err)
 	}
